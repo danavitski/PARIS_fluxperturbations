@@ -1,5 +1,5 @@
 netcdf paris_ctehr_template {
-dimensions:
+dimensions:bio
 	time = 12 ; // Monthly time variable
 	longitude = 250 ; // Same as CTE-HR grid, 0.1 x 0.2
 	latitude = 390 ; // Same as CTE-HR grid, 0.1 x 0.2
@@ -21,6 +21,9 @@ variables:
 		latitude:long_name = "latitude" ;
 		latitude:units = "degrees_north" ;
 		latitude:axis = "Y" ;
+	str countrycode(countrynumber) ;
+		countrycode:standard_name = "countrycode" ;
+		countrycode:long_name = "ISO-standard country code for each given countrynumber; to be used as a reference when saving the country-aggregated simulation output and related uncertainties" ;
 	float A_Public_power(time, latitude, longitude) ;
 		A_Public_power:units = "micromole/m2/s" ;
 		A_Public_power:long_name = "Surface CO2 emissions from GNFR sector A_Public_power" ;
