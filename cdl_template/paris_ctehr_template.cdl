@@ -1,0 +1,108 @@
+netcdf paris_ctehr_template {
+dimensions:
+	time = 12 ; // Monthly time variable
+	longitude = 250 ; // Same as CTE-HR grid, 0.1 x 0.2
+	latitude = 390 ; // Same as CTE-HR grid, 0.1 x 0.2
+	countrynumber = 43; // Ranges from 1 to 43, depending on EU country considered
+variables:
+	int time(time) ;
+		time:standard_name = "time" ;
+		time:long_name = "monthly time variable" ;
+		time:units = "seconds since 2000-01-01T00:00:00Z" ;
+		time:calendar = "standard" ;
+		time:axis = "T" ;
+	double longitude(longitude) ;
+		longitude:standard_name = "longitude" ;
+		longitude:long_name = "longitude" ;
+		longitude:units = "degrees_east" ;
+		longitude:axis = "X" ;
+	double latitude(latitude) ;
+		latitude:standard_name = "latitude" ;
+		latitude:long_name = "latitude" ;
+		latitude:units = "degrees_north" ;
+		latitude:axis = "Y" ;
+	float A_Public_power(time, latitude, longitude) ;
+		A_Public_power:units = "micromole/m2/s" ;
+		A_Public_power:long_name = "Surface CO2 emissions from GNFR sector A_Public_power" ;
+		A_Public_power:comment = "CO2 emitted by the generation of public power (GNFR A), including biofuel portion. Based on ENTSO-E" ;
+		A_Public_power:dtype = "float" ;
+	float B_Industry(time, latitude, longitude) ;
+		B_Industry:units = "micromole/m2/s" ;
+		B_Industry:long_name = "Surface CO2 emissions from GNFR sector B_Industry" ;
+		B_Industry:comment = "CO2 emitted by the industry sector (GNFR B), including biofuel portion. Based on CAMS data, extrapolated by Key Economic Indicators from Eurostat" ;
+		B_Industry:dtype = "float" ;
+	float C_Other_stationary_combustion_consumer(time, latitude, longitude) ;
+		C_Other_stationary_combustion_consumer:units = "micromole/m2/s" ;
+		C_Other_stationary_combustion_consumer:long_name = "Surface CO2 emissions from GNFR sector C_Other_stationary_combustion_consumer" ;
+		C_Other_stationary_combustion_consumer:comment = "CO2 emitted by other stationary combustion (GNFR C), including residential and commercial heating, including biofuel portion. Based on CAMS data, extrapolated by heating degree days from ERA5" ;
+		C_Other_stationary_combustion_consumer:dtype = "float" ;
+	float F_On-road(time, latitude, longitude) ;
+		F_On-road:units = "micromole/m2/s" ;
+		F_On-road:long_name = "Surface CO2 emissions from GNFR sector F_On-road" ;
+		F_On-road:comment = "CO2 emitted by on-road traffic (GNFR F), including cars and high- and low duty vehicles. Based on CAMS dtata, extrapolated by Eurostat fuel demand" ;
+		F_On-road:dtype = "float" ;
+	float H_Aviation(time, latitude, longitude) ;
+		H_Aviation:units = "micromole/m2/s" ;
+		H_Aviation:long_name = "Surface CO2 emissions from GNFR sector H_Aviation" ;
+		H_Aviation:comment = "CO2 emitted for Landing and TakeOff of aviation (GNFR H). Based on CAMS, with extrapolation based on kerosine demand, taken from Eurostat" ;
+		H_Aviation:dtype = "float" ;
+	float I_Off-road(time, latitude, longitude) ;
+		I_Off-road:units = "micromole/m2/s" ;
+		I_Off-road:long_name = "Surface CO2 emissions from GNFR sector I_Off-road" ;
+		I_Off-road:comment = "CO2 emitted by off-road vehicles (GNFR I, including construction work and lawn mowers). Based on CAMS emissions, without modification" ;
+		I_Off-road:dtype = "float" ;
+	float G_Shipping(time, latitude, longitude) ;
+		G_Shipping:units = "micromole/m2/s" ;
+		G_Shipping:long_name = "Surface CO2 emissions from GNFR sector G_Shipping" ;
+		G_Shipping:comment = "CO2 emitted ships, including international shipping (GNFR G). Based on CAMS data, extrapolated by Eurostat fuel demand" ;
+		G_Shipping:dtype = "float" ;
+	float cement(time, latitude, longitude) ;
+		cement:units = "micromole/m2/s" ;
+		cement:long_name = "CO2 emissions due to calcination of cement" ;
+		cement:comment = "CO2 emissions from the calcination of cement. Taken from GridFED v2021.1 (https://doi.org/10.6084/m9.figshare.13333643) from the last available year)" ;
+		cement:dtype = "float" ;
+	float combustion(time, latitude, longitude) ;
+		combustion:units = "micromole/m2/s" ;
+		combustion:long_name = "Sum of CO2 emissions from anthropogenic combustion emissions of GNFR sectors A, B, C, F, G, H, I." ;
+		combustion:comment = "CO2 emissions from anthropogenic combustion from GNFR sectors A, B, C, F, G, H, I, includion biofuel portion" ;
+		combustion:dtype = "float" ;
+	float flux_ff_exchange(time, latitude, longitude) ;
+		flux_ff_exchange:units = "micromole/m2/s" ;
+		flux_ff_exchange:long_name = "Sum of all anthropogenic emissions (including cement) of CO2" ;
+		flux_ff_exchange:comment = "CO2 emissions due to anthropogenic emissions, including fossil fuels, biofuels and cement production" ;
+		flux_ff_exchange:dtype = "float" ;
+	float flux_ocean_exchange(time, latitude, longitude) ;
+		flux_ocean_exchange:units = "micromole/m2/s" ;
+		flux_ocean_exchange:long_name = "CO2 emitted by the oceanic part of the biosphere;
+		flux_ocean_exchange:comment = "" ;
+		flux_ocean_exchange:dtype = "float" ;
+	float flux_fire_exchange(time, latitude, longitude) ;
+		flux_ocean_exchange:units = "micromole/m2/s" ;
+		flux_ocean_exchange:long_name = "CO2 emitted from forest fires" ;
+		flux_ocean_exchange:comment = "" ;
+		flux_ocean_exchange:dtype = "float" ;
+	float flux_bio_exchange_prior(time, latitude, longitude) ;
+		flux_bio_exchange_prior:units = "micromole/m2/s" ;
+		flux_bio_exchange_prior:long_name = "Prior of the CO2 emitted from the terrestrial biosphere" ;
+		flux_bio_exchange_prior:comment = "" ;
+		flux_bio_exchange_prior:dtype = "float" ;
+
+// global attributes:
+	:summary = "A collection of monthly-averaged CTE-HR CO2 fluxes for 2021, containing hourly estimates of biospheric fluxes, anthropogenic emissions (total and per sector), GFAS fire emissions and Jena CarboScope ocean fluxes, all re-gridded to match the resolution of the biospheric fluxes." ;
+	:source = "CTE-HR 1.0. Created using the code from https://git.wageningenur.nl/ctdas/CTDAS/-/tree/near-real-time, hash b8e1a8f" ;
+    :model_name = "CarbonTracker Europe - High Resolution" ;
+	:frequency = "monthly" ;
+	:geospatial_lat_resolution = "0.1 degree" ;
+	:geospatial_lon_resolution = "0.2 degree" ;
+	:crs = "spherical earth with radius of 6370 km" ;
+	:institution = "Wageningen University, department of Meteorology and Air Quality, Wageningen, the Netherlands; \n Rijksuniversiteit Groningen, Groningen, the Netherlands; \n ICOS Carbon Portal, Lund, Sweden" ;
+    :contact = "Daan Kivits, Wageningen University & Research, daan.kivits@wur.nl" ;
+	:project = "Process Attribution of Regional emISsions (PARIS)"
+	:keywords = "carbon flux, carbontracker, emission model, flux product" ;
+	:license = "CC-BY-4.0" ;
+	:Conventions = "CF-1.8" ;
+	:references = "van der Woude et al. (2023), https://doi.org/10.5194/essd-15-579-2023" ;
+	:comment = "Positive terrestrial and oceanic biosphere fluxes are emissions, and negative mean uptake. For more information, see https://doi.org/10.5281/zenodo.6477331" ;
+	:creation_date = "2023-03-17 17:36" ;
+	:history = "" ;
+}

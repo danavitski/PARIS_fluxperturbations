@@ -1,0 +1,10 @@
+/.vscode/
+*.nc
+*.pkl
+*.pickle
+/CTDAS/
+/CTE-HR/
+/DATA/
+/landmask/.ipynb_checkpoints/
+/landmask/countries_csv/
+area_comparison.csv

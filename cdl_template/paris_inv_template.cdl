@@ -1,0 +1,82 @@
+netcdf flux_template {
+dimensions:
+	time = 12 ; // Monthly time variable
+	longitude = 250 ; // Same as CTE-HR grid, 0.1 x 0.2
+	latitude = 390 ; // Same as CTE-HR grid, 0.1 x 0.2
+	countrynumber = 43; // Ranges from 1 to 43, depending on EU country considered
+variables:
+	int time(time) ;
+		time:standard_name = "time" ;
+		time:units = "seconds since 2000-01-01T00:00:00Z" ;
+		time:calendar = "standard" ;
+		time:axis = "T" ;
+	double longitude(longitude) ;
+		longitude:standard_name = "longitude" ;
+		longitude:long_name = "longitude" ;
+		longitude:units = "degrees_east" ;
+		longitude:axis = "X" ;
+	double latitude(latitude) ;
+		latitude:standard_name = "latitude" ;
+		latitude:long_name = "latitude" ;
+		latitude:units = "degrees_north" ;
+		latitude:axis = "Y" ;
+	float flux_ff_exchange(time, latitude, longitude) ;
+		ff_emissions_CO2:long_name = "anthropogenic CO2 fluxes" ;
+		ff_emissions_CO2:comment = "" ;
+		ff_emissions_CO2:dtype = "float" ;
+		ff_emissions_CO2:units = "mol m-2 s-1" ;
+	float flux_ocean_exchange(time, latitude, longitude) ;
+		flux_ocean_exchange:long_name = "ocean CO2 fluxes" ;
+		flux_ocean_exchange:comment = "" ;
+		flux_ocean_exchange:dtype = "float" ;
+		flux_ocean_exchange:units = "mol m-2 s-1" ;
+	float flux_bio_exchange_prior(time, latitude, longitude) ;
+		flux_bio_exchange_prior:long_name = "prior biosphere CO2 fluxes" ;
+		flux_bio_exchange_prior:comment = "" ;
+		flux_bio_exchange_prior:dtype = "float" ;
+		flux_bio_exchange_prior:units = "mol m-2 s-1" ;
+	float flux_bio_exchange_posterior(time, latitude, longitude) ;
+		flux_bio_exchange_posterior:long_name = "posterior biosphere CO2 fluxes" ;
+		flux_bio_exchange_posterior:comment = "" ;
+		flux_bio_exchange_posterior:dtype = "float" ;
+		flux_bio_exchange_posterior:units = "mol m-2 s-1" ;
+	float country_flux_bio_posterior(time, countrynumber) ;
+		country_flux_bio_posterior:long_name = "country-averaged posterior biosphere CO2 fluxes" ;
+		country_flux_bio_posterior:comment = "" ;
+		country_flux_bio_posterior:dtype = "float" ;
+		country_flux_bio_posterior:units = "mol m-2 s-1" ;
+  	float country_flux_ff_posterior(time, countrynumber) ;
+		country_flux_bio_posterior:long_name = "country-averaged posterior fossil fuel CO2 fluxes" ;
+		country_flux_bio_posterior:comment = "" ;
+		country_flux_bio_posterior:dtype = "float" ;
+		country_flux_bio_posterior:units = "mol m-2 s-1" ;
+  	float uncertainty_country_flux_bio_posterior(time, latitude, longitude) ;
+		uncertainty_bio_posterior:long_name = "uncertainty of country-averaged posterior biosphere CO2 fluxes" ;
+		uncertainty_bio_posterior:comment = "" ;
+		uncertainty_bio_posterior:dtype = "float" ;
+    	uncertainty_bio_posterior:units = "mol m-2 s-1" ;
+  	float uncertainty_country_flux_ff_posterior(time, latitude, longitude) ;
+		uncertainty_bio_posterior:long_name = "uncertainty of country-averaged posterior fossil fuel CO2 fluxes" ;
+		uncertainty_bio_posterior:comment = "" ;
+		uncertainty_bio_posterior:dtype = "float" ;
+    	uncertainty_bio_posterior:units = "mol m-2 s-1" ;
+
+// global attributes:
+	:summary = "A collection of monthly-averaged CTE-HR CO2 fluxes for 2021, containing hourly estimates of biospheric fluxes, anthropogenic emissions (total and per sector), GFAS fire emissions and Jena CarboScope ocean fluxes, all re-gridded to match the resolution of the biospheric fluxes." ;
+	:source = "CTE-HR 1.0. Created using the code from https://git.wageningenur.nl/ctdas/CTDAS/-/tree/near-real-time, hash b8e1a8f" ;
+    :model_name = "CarbonTracker Europe - High Resolution" ;
+	:frequency = "monthly" ;
+	:geospatial_lat_resolution = "0.1 degree" ;
+	:geospatial_lon_resolution = "0.2 degree" ;
+	:crs = "spherical earth with radius of 6370 km" ;
+	:institution = "Wageningen University, department of Meteorology and Air Quality, Wageningen, the Netherlands; \n Rijksuniversiteit Groningen, Groningen, the Netherlands; \n ICOS Carbon Portal, Lund, Sweden" ;
+    :contact = "Daan Kivits, Wageningen University & Research, daan.kivits@wur.nl" ;
+	:project = "Process Attribution of Regional emISsions (PARIS)"
+	:keywords = "carbon flux, carbontracker, emission model, flux product" ;
+	:license = "CC-BY-4.0" ;
+	:Conventions = "CF-1.8" ;
+	:references = "van der Woude et al. (2023), https://doi.org/10.5194/essd-15-579-2023" ;
+	:comment = "Positive terrestrial and oceanic biosphere fluxes are emissions, and negative mean uptake. For more information, see https://doi.org/10.5281/zenodo.6477331" ;
+	:creation_date = "2023-03-17 17:36" ;
+	:history = "" ;
+}
