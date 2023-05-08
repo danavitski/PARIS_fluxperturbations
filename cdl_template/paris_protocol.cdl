@@ -1,9 +1,9 @@
-netcdf flux_template {
+netcdf paris_protocol {
 dimensions:
-	time = 12 ; // Monthly time variable
-	longitude = 250 ; // Same as CTE-HR grid, 0.1 x 0.2
-	latitude = 390 ; // Same as CTE-HR grid, 0.1 x 0.2
-	countrynumber = 43; // Ranges from 1 to 43, depending on EU country considered
+	time = 12 ;
+	longitude = 250 ; 
+	latitude = 390 ; 
+	countrynumber = 43; 
 variables:
 	int time(time) ;
 		time:standard_name = "time" ;
@@ -80,6 +80,26 @@ variables:
 		country_flux_fire_exchange_posterior:comment = "" ;
 		country_flux_fire_exchange_posterior:dtype = "float" ;
 		country_flux_fire_exchange_posterior:units = "mol m-2 s-1" ;
+	float uncertainty_country_flux_ff_prior(time, countrynumber, countrynumber) ;
+		uncertainty_country_flux_ff_prior:long_name = "uncertainty matrix of country-averaged prior fossil fuel CO2 fluxes" ;
+		uncertainty_country_flux_ff_prior:comment = "" ;
+		uncertainty_country_flux_ff_prior:dtype = "float" ;
+    	uncertainty_country_flux_ff_prior:units = "mol m-2 s-1" ;
+	float uncertainty_country_flux_ocean_prior(time, countrynumber, countrynumber) ;
+		uncertainty_country_flux_ocean_prior:long_name = "uncertainty matrix of country-averaged prior ocean CO2 fluxes" ;
+		uncertainty_country_flux_ocean_prior:comment = "" ;
+		uncertainty_country_flux_ocean_prior:dtype = "float" ;
+    	uncertainty_country_flux_ocean_prior:units = "mol m-2 s-1" ;
+	float uncertainty_country_flux_bio_prior(time, countrynumber, countrynumber) ;
+		uncertainty_country_flux_bio_prior:long_name = "uncertainty matrix of country-averaged prior biosphere CO2 fluxes" ;
+		uncertainty_country_flux_bio_prior:comment = "" ;
+		uncertainty_country_flux_bio_prior:dtype = "float" ;
+    	uncertainty_country_flux_bio_prior:units = "mol m-2 s-1" ;
+	float uncertainty_country_flux_fire_prior(time, countrynumber, countrynumber) ;
+		uncertainty_country_flux_fire_prior:long_name = "uncertainty matrix of country-averaged prior wildfire CO2 fluxes" ;
+		uncertainty_country_flux_fire_prior:comment = "" ;
+		uncertainty_country_flux_fire_prior:dtype = "float" ;
+    	uncertainty_country_flux_fire_prior:units = "mol m-2 s-1" ;
   	float uncertainty_country_flux_ff_posterior(time, countrynumber, countrynumber) ;
 		uncertainty_country_flux_ff_posterior:long_name = "uncertainty matrix of country-averaged posterior fossil fuel CO2 fluxes" ;
 		uncertainty_country_flux_ff_posterior:comment = "" ;
@@ -116,7 +136,6 @@ variables:
 	:license = "CC-BY-4.0" ;
 	:Conventions = "CF-1.8" ;
 	:references = "van der Woude et al. (2023), https://doi.org/10.5194/essd-15-579-2023" ;
-	:comment = "Positive terrestrial and oceanic biosphere fluxes are emissions, and negative mean uptake. For more information, see https://doi.org/10.5281/zenodo.6477331" ;
-	:creation_date = "2023-03-17 17:36" ;
+	:comment = "Positive terrestrial and oceanic biosphere fluxes are emissions, and negative mean uptake. For more information, see https://doi.org/10.5281/zenodo.6477331. The country names that correspond to the given country numbers can be found in the CTE-HR base flux set and accessory country mask file"
 	:history = "" ;
 }
