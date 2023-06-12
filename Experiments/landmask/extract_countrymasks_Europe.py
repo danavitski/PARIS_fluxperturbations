@@ -7,7 +7,7 @@
 # 
 # based on the implementations of Ida Storm and Wouter Peters (2022)
 
-# In[2]:
+# In[ ]:
 
 
 import cartopy
@@ -30,7 +30,7 @@ import os
 country_list = read_csv('country_list.csv', header = 0)
 
 
-# In[3]:
+# In[ ]:
 
 
 plt.figure()
@@ -43,7 +43,7 @@ un_admin = cfeature.NaturalEarthFeature('cultural', 'admin_0_boundary_lines_land
 ax.add_feature(un_admin, facecolor='None', edgecolor='b')
 
 
-# In[4]:
+# In[ ]:
 
 
 def globarea(im=360, jm=180, silent=True):
@@ -64,18 +64,20 @@ def globarea(im=360, jm=180, silent=True):
     return area
 
 
-# In[5]:
+# In[ ]:
 
 
-def bboxarea(continent = 'Europe', res_lon = 0.05, res_lat = 0.05, silent = True):
+def bboxarea(continent = 'Europe', lon_bounds = [-14.9, 35.1], lat_bounds = [33.05, 72.05], res_lon = 0.05, res_lat = 0.05, silent = True):
     """ Function that calculates the surface area for each grid cell over a specific continent according to TM5 definitions"""
     radius = 6.371e6  # the earth radius in meters
     deg2rad = np.pi / 180.
     
     if continent == 'Europe':
-        lon_bounds = [-20,40]
-        lat_bounds = [30,75]
-    
+        lon_bounds = [-14.9, 35.1]
+        lat_bounds = [33.05, 72.05]
+    else: 
+        NameError
+        
     nx = int((lon_bounds[1] - lon_bounds[0])/res_lon)
     ny = int((lat_bounds[1] - lat_bounds[0])/res_lat)
     dxx = (lon_bounds[1] - lon_bounds[0]) / nx * deg2rad 
@@ -91,27 +93,30 @@ def bboxarea(continent = 'Europe', res_lon = 0.05, res_lat = 0.05, silent = True
     return area
 
 
-# In[6]:
+# In[ ]:
 
 
-def get_mask(continent = 'Europe', country='Netherlands', natural_earth_res=50, res_lon=1, res_lat=1):
+def get_mask(continent ='Europe', country='Netherlands', natural_earth_res=50, res_lon =1, res_lat=1, lon_bounds = [-14.9, 35.1], lat_bounds = [33.05, 72.05]):
     """ Function that calculates a fractional country mask for a given country (default = Netherlands) based on the Natural Earth library in either '10m', '50m', or '110m' 
     resolution, and also returns an area for each gridcell of the resulting fractional country mask grid. The user can choose a suitable resolution for the latitude/longitude 
     grid for which the fractional grid is calculated. """
-    
-    if continent == 'Europe':
-        extent = [[30,-20],[30,40],[75,40],[75,-20]] # corners given as follows: LR, LL, UL, UR
-        
+          
     shpfilename = shpreader.natural_earth(resolution=str(natural_earth_res) + 'm',
                                       category='cultural',
                                       name='admin_0_countries')
     reader = shpreader.Reader(shpfilename)
     countries = reader.records()
     
-    shape = [c.geometry for c in countries if c.attributes['SOVEREIGNT'].strip() == country]
+    if continent == 'Europe':
+        lon_bounds = [-14.9, 35.1]
+        lat_bounds = [33.05, 72.05]
+    else: 
+        NameError
+        
+    nx = int((lon_bounds[1] - lon_bounds[0])/res_lon)
+    ny = int((lat_bounds[1] - lat_bounds[0])/res_lat)
     
-    nx = int((extent[1][1] - extent[0][1])/res_lon)
-    ny = int((extent[2][0] - extent[0][0])/res_lat)
+    shape = [c.geometry for c in countries if c.attributes['SOVEREIGNT'].strip() == country]
     
     frac = np.zeros((ny, nx,))
     area = globarea(nx, ny, silent=True)
@@ -119,10 +124,10 @@ def get_mask(continent = 'Europe', country='Netherlands', natural_earth_res=50, 
     mask_list = []
     
     for j in range(ny):
-        jj = extent[0][0]+res_lat*j  # Latitude; CTE-HR grid: 33N to 72N, this grid: 30N to 75N
+        jj = lat_bounds[0]+res_lat*j  # Latitude; CTE-HR grid: 33N to 72N
 
         for i in range(nx):
-            ii = extent[0][1]+res_lon*i  #Longitude; CTE-HR grid: 15W to 35E, this grid: 20W to 40E
+            ii = lon_bounds[0]+res_lon*i  #Longitude; CTE-HR grid: 15W to 35E
 
             this_point = Point(ii, jj)
 
@@ -140,17 +145,14 @@ def get_mask(continent = 'Europe', country='Netherlands', natural_earth_res=50, 
     return frac, area
 
 
-# In[7]:
+# In[ ]:
 
 
-def get_mask_continent(countrylist, continent = 'Europe', natural_earth_res=10, res_lon=0.05, res_lat=0.05, test=False, fill = 0):
+def get_mask_continent(countrylist, continent = 'Europe', natural_earth_res=10, res_lon=0.05, res_lat=0.05, test=False, lon_bounds = [-14.9, 35.1], lat_bounds = [33.05, 72.05], fill = 0):
     """ Function that calculates a fractional country mask with the extent of a specific continent (default = Europe) based on the Natural Earth library in either 
     '10m', '50m', or '110m' resolution, and it also returns an area for each gridcell of the resulting fractional country mask grid. The user can choose a 
     suitable resolution for the latitude/longitude grid for which the fractional grid is calculated. These masks are then stored in a list, which is later 
     converted into pandas DataFrame which is then converted into a netCDF file structure. """
-    
-    if continent == 'Europe':
-        extent = [[30,-20],[30,40],[75,40],[75,-20]] # corners given as follows: LR, LL, UL, UR
     
     shpfilename = shpreader.natural_earth(resolution=str(natural_earth_res) + 'm',
                                       category='cultural',
@@ -163,6 +165,15 @@ def get_mask_continent(countrylist, continent = 'Europe', natural_earth_res=10, 
         countrylist = countrylist[countrylist['code'] == 'RUS']
         res_lat = res_lon = 1
     
+    if continent == 'Europe':
+        lon_bounds = [-14.9, 35.1]
+        lat_bounds = [33.05, 72.05]
+    else: 
+        NameError
+
+    nx = int((lon_bounds[1] - lon_bounds[0])/res_lon)
+    ny = int((lat_bounds[1] - lat_bounds[0])/res_lat)
+
     for country in countrylist['code']: 
         if country != 'PRT' and country != 'CYN' and country != 'CYP' and country != 'KOS' and country != 'SRB':
             shape = NEcountries.loc[NEcountries['ADM0_ISO'] == country].geometry.values[0]
@@ -173,18 +184,15 @@ def get_mask_continent(countrylist, continent = 'Europe', natural_earth_res=10, 
         
         print('Busy with ... ' + str(name), flush=True)
         name_list.append(name)
-        
-        nx = int((extent[1][1] - extent[0][1])/res_lon)
-        ny = int((extent[2][0] - extent[0][0])/res_lat)
 
         frac = np.zeros((ny, nx,))
-        area = globarea(nx, ny, silent=True)
-
+        #area = globarea(nx, ny, silent=True)
+        
         for j in range(ny):
-            jj = extent[0][0]+res_lat*j  # Latitude; CTE-HR grid: 33N to 72N, this grid: 30N to 75N
+            jj = lat_bounds[0]+res_lat*j  # Latitude; CTE-HR grid: 33N to 72N
 
             for i in range(nx):
-                ii = extent[0][1]+res_lon*i  #Longitude; CTE-HR grid: 15W to 35E, this grid: 20W to 40E
+                ii = lon_bounds[0]+res_lon*i  #Longitude; CTE-HR grid: 15W to 35E
 
                 this_point = Point(ii, jj)
 
@@ -200,11 +208,13 @@ def get_mask_continent(countrylist, continent = 'Europe', natural_earth_res=10, 
             frac[frac == 0] = np.nan
         
         mask_list.append(frac)
-        area_list.append(frac)
-        
-    return mask_list, area_list, name_list
+        #area_list.append(area)
+    
+    #return mask_list, area_list, name_list
+    return mask_list, name_list
 
-mask_list, area_list, name_list = get_mask_continent(countrylist = country_list, res_lon = 0.05, res_lat = 0.05, natural_earth_res = 10, test=False)
+#mask_list, area_list, name_list = get_mask_continent(countrylist = country_list, res_lon = 0.05, res_lat = 0.05, natural_earth_res = 10, test=False)
+mask_list, name_list = get_mask_continent(countrylist = country_list, res_lon = 0.2, res_lat = 0.1, natural_earth_res = 10, test=False)
 
 
 # In[ ]:
@@ -212,7 +222,7 @@ mask_list, area_list, name_list = get_mask_continent(countrylist = country_list,
 
 from datetime import datetime
 
-def create_ncfile(countrylist, lon_bounds = [-20,40], lat_bounds = [30,75], res_lon = 0.05, res_lat = 0.05, ncfile = 'output.nc', test=False):
+def create_ncfile(countrylist, lon_bounds = [-14.9, 35.1], lat_bounds = [33.05, 72.05], res_lon = 0.05, res_lat = 0.05, ncfile = 'output.nc', test=False):
     if test == True:
         res_lat = res_lon = 1
         ncfile = 'test.nc'
@@ -236,8 +246,8 @@ def create_ncfile(countrylist, lon_bounds = [-20,40], lat_bounds = [30,75], res_
     mask_nc.createDimension('countrynumber', 43)
 
     mask_nc.description = "Fractional country masks for European countries based on the 10m Natural Earth data set. Multiply with flux sets to retain only country-specific flux fields"
-    mask_nc.geospatial_lat_resolution = "0.05 degree"
-    mask_nc.geospatial_lon_resolution = "0.05 degree"
+    mask_nc.geospatial_lat_resolution = str(res_lat) + " degree"
+    mask_nc.geospatial_lon_resolution = str(res_lon) + " degree"
     mask_nc.creation_date = datetime.today().strftime('%Y-%m-%d')
     mask_nc.institution = "Wageningen University, department of Meteorology and Air Quality, Wageningen, the Netherlands"
     mask_nc.contact = "Daan Kivits; daan.kivits@wur.nl"
@@ -303,31 +313,29 @@ def create_ncfile(countrylist, lon_bounds = [-20,40], lat_bounds = [30,75], res_
         countryabbrev[country_index] = abbrevstr
         del countryabbrev._Encoding
         
-        countrytimezone[country_index] = timezonestr
-
         countrymask = mask_nc.createVariable(abbrevstr,'f4',('latitude', 'longitude'), zlib=True)
         countrymask.long_name = "fractional country mask for " + countrystr
         
         countrymask[:,:] = mask_list[country_index]
         countryarea[country_index] = np.nansum(areavar * countrymask[:,:])
-    
+        countrytimezone[country_index] = timezonestr
     mask_nc.close()
 
-create_ncfile(countrylist = country_list, ncfile = 'europe_countrymasks_0.05deg_2D_v2.nc', test=False)
+create_ncfile(countrylist = country_list, res_lon = 0.2, res_lat = 0.1, ncfile = 'paris_countrymask_0.2x0.1deg_2D.nc', test=False)
 
 
-# In[8]:
+# In[ ]:
 
 
 #print(np.shape(mask_list), np.shape(area_list), flush=True)
 
-shpfilename = shpreader.natural_earth(resolution='110m',
-                                      category='cultural',
-                                      name='admin_0_countries')
+#hpfilename = shpreader.natural_earth(resolution='110m',
+#                                      category='cultural',
+#                                      name='admin_0_countries')
 #reader = shpreader.Reader(shpfilename)
 #countries = reader.records()
-countrylist = geopandas.read_file(shpfilename)
-NEcountries = geopandas.read_file(shpfilename)
+#countrylist = geopandas.read_file(shpfilename)
+#NEcountries = geopandas.read_file(shpfilename)
 
 #for c in countries: 
 #    print(c.attributes['ADM0_ISO'])
@@ -336,10 +344,10 @@ NEcountries = geopandas.read_file(shpfilename)
 #    print(c.attributes['SOV_A3'])
 #print(countrylist.columns.values.tolist())
 #print(countrylist.loc[countrylist['ADM0_ISO'] == 'KOS'].SOVEREIGNT.values[0])
-print(NEcountries.loc[NEcountries['SOV_A3'] == 'KOS'].SOVEREIGNT.values)
-print(countrylist.loc[countrylist['ADM0_ISO'] == 'SRB'].SOVEREIGNT.values)
-print(NEcountries.loc[NEcountries['SOV_A3'] == 'SRB'].SOVEREIGNT.values)
-np.array_equal(NEcountries.loc[NEcountries['SOV_A3'] == 'KOS'].geometry.values[0],NEcountries.loc[NEcountries['SOV_A3'] == 'SRB'].geometry.values[0])
+#print(NEcountries.loc[NEcountries['SOV_A3'] == 'KOS'].SOVEREIGNT.values)
+#print(countrylist.loc[countrylist['ADM0_ISO'] == 'SRB'].SOVEREIGNT.values)
+#print(NEcountries.loc[NEcountries['SOV_A3'] == 'SRB'].SOVEREIGNT.values)
+#np.array_equal(NEcountries.loc[NEcountries['SOV_A3'] == 'KOS'].geometry.values[0],NEcountries.loc[NEcountries['SOV_A3'] == 'SRB'].geometry.values[0])
 
 
 # ## 110 m NaturalEarthFeature resolution

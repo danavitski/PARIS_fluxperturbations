@@ -8,3 +8,5 @@
 /landmask/.ipynb_checkpoints/
 /landmask/countries_csv/
 area_comparison.csv
+/Experiments/landmask/plots/*
+/Experiments/scripts/yr1/*/functions/__pycache__
