@@ -8,6 +8,8 @@ from glob import glob
 import platform
 import os
 
+os.chdir('/projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/')
+
 cdo = Cdo()
 OUTPATH = '../ICOS_OUTPUT/'
 INPATH = '../output/'

@@ -9,6 +9,8 @@ import platform
 import os
 import pandas as pd
 
+os.chdir('/projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/')
+
 cdo = Cdo()
 INPATH = '/projects/0/ctdas/PARIS/CTE-HR/output'
 OUTPATH = '/projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT'
@@ -126,8 +128,8 @@ for inname, outname, varname in zip(innames, outnames, varnames):
 lon_bounds = [-14.9, 35.1]
 lat_bounds = [33.05, 72.05]
 res_lon, res_lat = 0.2, 0.1
-nx = int((lon_bounds[1] - lon_bounds[0])/res_lon)
-ny = int((lat_bounds[1] - lat_bounds[0])/res_lat)
+nx = int((lon_bounds[1] + res_lon - lon_bounds[0])/res_lon)
+ny = int((lat_bounds[1] + res_lat - lat_bounds[0])/res_lat)
 lon_list = np.arange(lon_bounds[0],lon_bounds[1], res_lon)
 lat_list = np.arange(lat_bounds[0],lat_bounds[1], res_lat)
 

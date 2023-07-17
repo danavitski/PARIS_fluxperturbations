@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH -p thin
-#SBATCH -t 00:30:00 
+#SBATCH -t 04:00:00 
 #SBATCH -n 64
 #SBATCH -N 1
 #SBATCH --mail-user=daan.kivits@wur.nl
 #SBATCH --mail-type=FAIL,END
+#SBATCH --job-name=PARIS_DFIN
 
 source /home/dkivits/.bashrc 
 
@@ -20,4 +21,6 @@ source activate cte-hr-env
 
 #python $1 > submit_fluxes.log
 #python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/combine_for_paris.py 2021 > submit_fluxes.log
-python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/DFIN/paris_DFIN.py > submit_fluxes_DFIN.log
+python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/DFIN/paris_DFIN.py > /projects/0/ctdas/PARIS/Experiments/scripts/yr1/DFIN/submit_fluxes_DFIN.log
+
+echo "Job finished"

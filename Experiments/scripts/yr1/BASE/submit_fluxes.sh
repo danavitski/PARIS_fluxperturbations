@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -p thin
-#SBATCH -t 02:00:00 
+#SBATCH -t 04:00:00 
 #SBATCH -n 64
 #SBATCH -N 1
 #SBATCH --mail-user=daan.kivits@wur.nl
@@ -18,6 +18,8 @@ module load netCDF/4.8.0-gompi-2021a
 
 source activate cte-hr-env
 
-python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/combine_for_paris.py 2021 > submit_fluxes.log
+#python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/combine_for_paris.py 2021 > submit_fluxes.log
 
-#nccopy -u -d9 /projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/paris_input.nc /projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/paris_input_u_d9.nc
+nccopy -u -s -d9 /projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/paris_input.nc /projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/paris_input_s_u_d9.nc
+
+echo "Job finished"

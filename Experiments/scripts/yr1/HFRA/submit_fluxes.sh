@@ -5,7 +5,7 @@
 #SBATCH -N 1
 #SBATCH --mail-user=daan.kivits@wur.nl
 #SBATCH --mail-type=FAIL,END
-#SBATCH --job-name=PARIS_HGER
+#SBATCH --job-name=PARIS_HFRA
 
 source /home/dkivits/.bashrc 
 
@@ -19,8 +19,6 @@ module load netCDF/4.8.0-gompi-2021a
 
 source activate cte-hr-env
 
-#python $1 > submit_fluxes.log
-#python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/combine_for_paris.py 2021 > submit_fluxes.log
-python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/HGER/paris_HGER.py > /projects/0/ctdas/PARIS/Experiments/scripts/yr1/HGER/submit_fluxes_HGER.log
+python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/HFRA/paris_HFRA.py > /projects/0/ctdas/PARIS/Experiments/scripts/yr1/HFRA/submit_fluxes_HFRA.log
 
 echo "Job finished"

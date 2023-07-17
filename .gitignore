@@ -1,5 +1,6 @@
 /.vscode/
 *.nc
+*.hdf
 *.pkl
 *.pickle
 /CTDAS/
@@ -10,3 +11,10 @@
 area_comparison.csv
 /Experiments/landmask/plots/*
 /Experiments/scripts/yr1/*/functions/__pycache__
+*PKG-INFO
+*pyc
+*.cpython
+*Zone.Identifier
+/FLEXPART/
+submit_fluxes_*.log
+*slurm*
