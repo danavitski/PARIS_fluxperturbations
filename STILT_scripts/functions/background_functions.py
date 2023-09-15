@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import netCDF4 as nc
 import datetime as dtm
+from tqdm import tqdm
+from functions.fluxfile_functions import *
 
 def get_last_times(t, path, lat, lon, agl, npars=100):
     """Get last recorded time of every particle for a certain station, using 
@@ -99,3 +101,15 @@ def get_bg(start, row, bgdir = '/projects/0/ctdas/PARIS/DATA/background/STILT/')
     with nc.Dataset(bgfile) as ds:
         bg = ds['co2'][time_idx, height_idx, lat_idx, lon_idx]
     return bg
+
+
+def calculate_mean_bg(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl):
+    """Calculate mean background concentration for a certain footprint.
+    Uses the get_last_times() and get_bg() functions. """
+    last_times = get_last_times(t = fp_starttime, path = RDatapath, npars = npars, lat = lat, lon = lon, agl = agl)
+    
+    bg = []
+    for y, row in last_times.iterrows():
+        bg.append(get_bg(fp_starttime, row, bgdir = bgpath))
+    
+    return np.mean(bg)

@@ -13,8 +13,8 @@ from functions.background_functions import *
 import tqdm
 
 # Define variable list to loop over later
-fluxfilelist = ['nep', 'fire', 'ocean', 'anthropogenic']
-fluxnamelist = ['nep', 'fire', 'ocean', 'combustion']
+fluxfilenamelist = ['nep', 'fire', 'ocean', 'anthropogenic']
+fluxvarnamelist = ['nep', 'fire', 'ocean', 'combustion']
 fluxdir = '/projects/0/ctdas/awoude/NRT/ICOS_OUTPUT/'
 #fluxdir = '/gpfs/scratch1/shared/dkivits/fluxes/CTE-HR/modified/'
 
@@ -46,8 +46,7 @@ sim_length = 240
 npars = 100
 
 # Define lat/lon grid
-lats = list(np.round(np.arange(33.05, 72.05, 0.1),4))
-lons = list(np.round(np.arange(-14.9, 35.1, 0.2),4))
+lats, lons = coordinate_list(33.05, 72.05, -14.9, 35.1, 0.1, 0.2)
 
 # Define footprint file list
 filepath = '/gpfs/scratch1/shared/dkivits/STILT/footprints/'
@@ -71,84 +70,30 @@ for station in stationslist:
     # Get list of footprint files for station
     sparse_files = sorted(glob.glob(filepath + 'footprint_' + station + '*.nc'))
 
-    # Define time range and list of times
-    timestr_start = sparse_files[0][-37:-24]
-    timestr_end = sparse_files[-1][-37:-24]
-    fp_range_start = datetime.strptime(timestr_start, '%Yx%mx%dx%H')- timedelta(hours=sim_length)
-    fp_range_end = datetime.strptime(timestr_end, '%Yx%mx%dx%H') 
-    times = pd.date_range(start=fp_range_start, end=fp_range_end, freq='H')
-
     # Extract all unique months between start and end time
-    mons = pd.date_range(fp_range_start, fp_range_end, freq='D').strftime("%Y%m").unique().tolist()
+    mons = footprint_unique_months(sparse_files, sim_length)
 
-    if stationslist.index(station) == 0:
-        # Loop over all CTE-HR flux variables
-        fluxstring = []
-        for var in fluxfilelist:
-            for mon in mons:
-                # Define which CTE-HR flux files to loop over
-                fluxstring += sorted(glob.glob(fluxdir + var + '.' + mon + '.nc'))
+    # Extract all times in footprint files
+    # times = footprint_hours(sparse_files, sim_length)
 
-        # Check if selection went right
-        print(fluxstring)
+    # Only once per station, create list of all CTE-HR flux files
+    fluxstring = find_fluxfiles(fluxdir = fluxdir, variablelist_files = fluxfilenamelist, months = mons)
 
-        # Open all files in fluxstring as xr_mfdataset
-        cte_ds = xr.open_mfdataset(fluxstring, combine='by_coords')
-        cte_ds = add_variables(cte_ds, fluxnamelist)
+    # Check if selection went right
+    print(fluxstring)
+
+    # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
+    cte_ds = open_multiple_fluxfiles(fluxstring, variablelist_vars = fluxvarnamelist)
 
     # Get 3D station location
-    lat = stationsfile[stationsfile['code']==station]['lat'].values[0]
-    lon = stationsfile[stationsfile['code']==station]['lon'].values[0]
-    agl = stationsfile[stationsfile['code']==station]['alt'].values[0]
-    
-    # Drop times that are not in the range of the footprint files
-    for datetime in times:
-        if datetime.hour not in range(fp_range_start.hour, (fp_range_end + timedelta(hours=1)).hour):
-            times = times.drop(datetime)
-
+    lat,lon,agl = get_3d_station_location(station, stationsfile)    
+ 
     # Loop over all footprints files
-    for i in tqdm.tqdm(range(0,len(sparse_files))):
-           
-        # Get start and end time of footprint
-        sparse_file = sparse_files[i]
-        fp_df_sparse = nc.Dataset(sparse_file, 'r')
-
-        # Get start time of footprint
-        timestr = sparse_file[-37:-24]
-        fp_starttime = pd.to_datetime(timestr, format="%Yx%mx%dx%H")
-        obspack_starttime = int((fp_starttime - obspack_basetime).total_seconds())
-
-        # Calculate hours since start of CTE-HR flux file to use later for indexing in the for-loop
-        time_diff = (fp_starttime - pd.to_datetime(mons[0], format="%Y%m"))
-        hours_since_start_of_ds = time_diff.seconds // 3600 + time_diff.days * 24
-
-        # Extract latitude indices from sparse footprint file using list comprehension
-        lat_indices = [lats.index(i) for i in list(np.round(fp_df_sparse.variables['Latitude'][:].tolist(), 4))]
-        lon_indices = [lons.index(i) for i in list(np.round(fp_df_sparse.variables['Longitude'][:].tolist(), 4))]
-        
-        # Select current footprint time
-        hours_into_file = (hours_since_start_of_ds - fp_df_sparse.variables['Time'][:]).astype(int)
-
-        # Convert the list of indices to xr.DataArrays, so that they can be used for efficient non-ortagonal indexing
-        lat_indices = xr.DataArray(lat_indices, dims=['pos'])
-        lon_indices = xr.DataArray(lon_indices, dims=['pos'])
-        hours_into_file = xr.DataArray(hours_into_file, dims=['pos'])
-
-        # Get last times of all particles
-        last_times = get_last_times(t = fp_starttime, path = filepath, npars = npars, lat = lat, lon = lon, agl = agl)
-        
-        # Calculate background concentration
-        bg = []
-        for y, row in last_times.iterrows():
-            bg.append(get_bg(fp_starttime, row, bgdir = bgfilepath))
-
-        ObsPack.variables['cte_contribution'][i] = (cte_ds[hours_into_file,
-                                                        lat_indices,
-                                                        lon_indices] * fp_df_sparse.variables['Influence'][:]).sum()
-
-        ObsPack.variables['background'][i] = np.mean(bg)
-        ObsPack.variables['pseudo_observation'][i] = np.mean(bg)
-
+    create_obs_sim_dict(fp_filelist = sparse_files, flux_dataset = cte_ds,
+                        lats = lats, lons = lons, list_of_mons = mons, RDatapath = filepath, 
+                        bgpath = bgfilepath, npars = npars, station_lat = lat, station_lon = lon, 
+                        station_agl = agl, stationname = station)
+    
 # Print total time
 print("--- %s seconds ---" % (time.time() - start_time))
 

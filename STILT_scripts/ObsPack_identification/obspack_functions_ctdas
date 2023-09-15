@@ -1,0 +1,143 @@
+# This file contains functions to link existing footprints 
+# to ObsPack files.
+
+# Import necessary modules
+import pandas as pd
+import numpy as np
+from numpy import array, logical_and, sqrt
+import glob
+import netCDF4 as nc
+from datetime import datetime, timedelta
+import pandas as pd
+import xarray as xr
+import os
+import time
+from functions.fluxfile_functions import *
+from functions.background_functions import *
+import tqdm
+import logging
+import da.tools.io4 as io
+import da.tools.rc as rc
+import zipfile
+
+def add_simulations(self, filename, silent=False):
+    """ Adds model simulated values to the mole fraction objects """
+
+    if not os.path.exists(filename):
+        msg = "Sample output filename for observations could not be found : %s" % filename
+        logging.error(msg)
+        logging.error("Did the sampling step succeed?")
+        logging.error("...exiting")
+        raise IOError(msg)
+
+    ncf       = io.ct_read(filename, method='read')
+    ids       = ncf.get_variable('obs_num')
+    simulated = ncf.get_variable('flask')
+    ncf.close()
+    logging.info("Successfully read data from model sample file (%s)" % filename)
+
+    obs_ids = self.getvalues('id').tolist()
+    ids     = list(map(int, ids))
+
+    missing_samples = []
+
+    for idx, val in zip(ids, simulated):
+        if idx in obs_ids:
+            index = obs_ids.index(idx)
+
+            self.datalist[index].simulated = val  # in mol/mol
+        else:
+            missing_samples.append(idx)
+
+    if not silent and missing_samples != []:
+        logging.warning('Model samples were found that did not match any ID in the observation list. Skipping them...')
+        #msg = '%s'%missing_samples ; logging.warning(msg)
+
+    logging.debug("Added %d simulated values to the Data list" % (len(ids) - len(missing_samples)))
+
+def add_observations(self):
+    """ Returns a MoleFractionList holding individual MoleFractionSample objects for all obs in a file
+
+        The ObsPack mole fraction files are provided as time series per site with all dates in sequence.
+        We will loop over all site files in the ObsPackage, and subset each to our needs
+
+    """
+
+    # Step 1: Read list of available site files in package
+    infile = os.path.join(self.obspack_dir, 'summary', '%s_dataset_summary.txt' % (self.obspack_id,))
+    f      = open(infile, 'r', encoding="utf-8")
+    lines  = f.readlines()
+    f.close()
+
+    ncfilelist = []
+    for line in lines:
+        if not line.startswith('# dataset:'): continue
+
+        items = line.split(':')
+        #ncfile, lab , start_date, stop_date, data_comparison = items[0:5]
+        #ncfile, lab , start_date, stop_date, data_comparison= line[:105].split()
+        ncfile = items[1].strip()
+
+        ncfilelist += [ncfile]
+    del line
+
+    # Step 2: Read valid sites from site_weights file
+    valid_sites = []
+    valid_categories = []
+    sites_weights = rc.read(self.sites_file)
+    for key, value in list(sites_weights.items()):
+        if 'co2_' in key:
+            sitename, sitecategory = key, value
+            sitename = sitename.strip()
+            sitecategory = sitecategory.split()[0].strip().lower()
+            if (sitecategory != 'do-not-use'):
+                valid_sites.append(sitename)
+                valid_categories.append(sitecategory)
+    del key, value
+
+    # Step 3: Read observations from valid sites only
+    logging.debug("ObsPack dataset info read, proceeding with %d netcdf files" % len(ncfilelist))
+
+    for ncfile in ncfilelist:
+
+        if ncfile not in valid_sites: continue
+        sitecategory = valid_categories[valid_sites.index(ncfile)]
+
+        infile = os.path.join(self.obspack_dir, 'data', 'nc', ncfile + '.nc')
+        ncf    = io.ct_read(infile, 'read')
+        idates = ncf.get_variable('time_components')
+        dates  = array([dtm.datetime(*d) for d in idates])
+
+        subselect = logical_and(dates >= self.startdate , dates <= self.enddate).nonzero()[0]
+
+        dates = dates.take(subselect, axis=0)
+
+        if 'merge_num' in ncf.variables:
+            obspacknum = ncf.get_variable('merge_num').take(subselect)
+        else:
+            obspacknum = ncf.get_variable('obspack_num').take(subselect)
+        if 'ccggAllData' in ncfile:
+            obspackid = ncf.get_variable('id').take(subselect, axis=0)
+        else:
+            obspackid = ncf.get_variable('obspack_id').take(subselect, axis=0)
+        obspackid   = [s.tostring().lower() for s in obspackid]
+        obspackid   = list(map(str.strip,str(obspackid)))
+        datasetname = ncfile  # use full name of dataset to propagate for clarity
+        lats        = ncf.get_variable('latitude').take(subselect, axis=0)
+        lons        = ncf.get_variable('longitude').take(subselect, axis=0)
+        alts        = ncf.get_variable('altitude').take(subselect, axis=0)
+        obs         = ncf.get_variable('value').take(subselect, axis=0)
+        species     = ncf.get_attribute('dataset_parameter')
+        flags       = ncf.get_variable('obs_flag').take(subselect, axis=0)
+        assimilation_concerns = ncf.get_variable('assimilation_concerns').take(subselect, axis=0)
+        ncf.close()
+
+        # only add observations with flag = 1 or validation sites
+        counter = 0
+        for n in range(len(dates)):
+            if sitecategory == 'validation' or (flags[n] == 1 and assimilation_concerns[n].sum() == 0):
+                self.datalist.append(MoleFractionSample(obspacknum[n], dates[n], datasetname, obs[n], 0.0, 0.0, 0.0, 0.0, \
+                                    flags[n], alts[n], lats[n], lons[n], obspackid[n], species, 1, 0.0, infile))
+                counter += 1
+        logging.debug("Added %d observations from file (%s) to the Data list, category is: %s" % (counter, ncfile, sitecategory))
+    logging.info("Observations list now holds %d values" % len(self.datalist))
