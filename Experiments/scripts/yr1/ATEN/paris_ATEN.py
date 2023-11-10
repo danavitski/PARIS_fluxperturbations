@@ -19,13 +19,11 @@ plotpath = '/projects/0/ctdas/PARIS/CTE-HR/analysis/plots/' + experimentcode + '
 inpath = '/projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/'
 paris_perturbation_path = inpath + experimentcode + '/'
 paris_perturbation_file = paris_perturbation_path + 'paris_ctehr_perturbedflux_yr1_' + experimentcode + '.nc'
-paris_base_path = inpath + 'paris_input_s_u_d9.nc'
+paris_base_path = inpath + 'paris_ctehr_yr1_BASE.nc'
 
 # If the target directory does not yet exist, create it
 if not os.path.exists(paris_perturbation_path):
     os.mkdir(paris_perturbation_path)
-
-shutil.copyfile(paris_base_path, paris_perturbation_file)
 
 paris_base = nc.Dataset(paris_base_path, 'r', format='NETCDF3_CLASSSIC')
 paris_perturbation = nc.Dataset(paris_perturbation_file, 'r+', format='NETCDF3_CLASSSIC')
@@ -54,43 +52,35 @@ ff_list = [
     'G_Shipping'
 ]
 
-# EXTRACT TRANSPORT EMISSIONS FROM BASE FILE
-ff_emis_total = paris_base.variables['flux_ff_exchange_prior'][:,:,:]
+# %%
+# COPY BASE FILE SO THAT WE CAN PERTURB IT
+shutil.copyfile(paris_base_path, paris_perturbation_file)
 
-# SCALE DOWN TOTAL EMISSIONS BY 10%
-ff_emis_total_scaled = ff_emis_total * 0.9
+## INCREASE TOTAL EMISSIONS BY 10% AND SAVE FLUX PERTRUBATION TO NEWLY COPIED FLUX SET
+paris_perturbation.variables['flux_ff_exchange_prior'][:,:,:] = paris_base.variables['flux_ff_exchange_prior'][:,:,:] * 1.1
 
-# SAVE FLUX PERTRUBATION TO NEWLY COPIED FLUX SET
-paris_perturbation.variables['flux_ff_exchange_prior'][:] = ff_emis_total_scaled
-
-# RE-CALCULATE TOTAL EMISSIONS
-dummy = np.ones((len(paris_base.variables['time']),ny,nx))
-for var in ff_list:
-    dummy = dummy + paris_perturbation.variables[var][:,:,:]
-
-# SAVE TOTAL EMISSIONS TO NEWLY COPIED FLUX SET
-paris_perturbation.variables['combustion'][:,:,:] = dummy
-
-# RE-CALCULATE TOTAL EMISSIONS INCLUDING CEMENT PRODUCTION
-paris_perturbation.variables['flux_ff_exchange_prior'][:] = paris_perturbation.variables['combustion'][:] + paris_perturbation.variables['cement'][:]
+## SAVE TOTAL EMISSIONS TO NEWLY COPIED FLUX SET
+paris_perturbation.variables['combustion'][:,:,:] = paris_perturbation.variables['combustion'][:,:,:] * 1.1
 
 # CLOSE FILES
 paris_base.close()
 paris_perturbation.close()
 
-"""
+# %%
 # PLOT
 # If the target directory does not yet exist, create it
 if not os.path.exists(plotpath):
     os.mkdir(plotpath)
 
-side_by_side = False
+side_by_side = True
 time_list = pd.date_range(dt.datetime(2021,1,1,0,0,0), dt.datetime(2021,1,2,0,0,0), freq='1H') 
 for time in range(0, len(time_list)):
         print('Busy with ... ' + str(time))
         
-        ff_emis_total_scaled = ff_emis_total[time] * 0.9
-        dif = ff_emis_total[time] - ff_emis_total_scaled
+        ff_emis_total = paris_base.variables['flux_ff_exchange_prior'][time,:,:]
+        ff_emis_total_scaled = paris_perturbation.variables['flux_ff_exchange_prior'][time,:,:]
+        #ff_emis_total_scaled = paris_base.variables['flux_ff_exchange_prior'][time,:,:] * 1.1
+        dif = paris_base.variables['flux_ff_exchange_prior'][time,:,:] - paris_perturbation.variables['flux_ff_exchange_prior'][time,:,:]
         
         if np.array_equal(ff_emis_total_scaled, ff_emis_total):
             print('Arrays are equal')
@@ -99,17 +89,18 @@ for time in range(0, len(time_list)):
 
         if side_by_side == True:
             fig, (ax1, ax2, ax3) = plt.subplots(nrows = 1, ncols = 3, figsize = (16, 9))
-            base = ax1.imshow(ff_emis_total[time,:,:], origin='lower')#, vmin = 0, vmax = 5e-6)
-            half = ax2.imshow(ff_emis_total_scaled, origin='lower')#, vmin = 0, vmax = 5e-6)
-            dif = ax3.imshow(ff_emis_total[time,:,:] - ff_emis_total_scaled, origin='lower')#, vmin = 0, vmax = 5e-6)
-            fig.colorbar(dif, orientation='horizontal', pad = 0.05, ax = [ax1, ax2, ax3])
+            base = ax1.imshow(ff_emis_total, cmap ='Reds_r', origin='lower', vmin = 0, vmax = 5e-6)
+            half = ax2.imshow(ff_emis_total_scaled, cmap ='Reds_r', origin='lower', vmin = 0, vmax = 5e-6)
+            dif = ax3.imshow(ff_emis_total - ff_emis_total_scaled, cmap ='Reds_r', origin='lower', vmin = 0, vmax = -1e-7)
+            fig.colorbar(base, orientation='horizontal', pad = 0.05, ax = [ax1, ax2])
+            fig.colorbar(dif, orientation='horizontal', pad = 0.05, ax = ax3)
             
         else:
             fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize = (16, 9))
-            dif = ax.imshow(ff_emis_total[time,:,:] - ff_emis_total_scaled, origin='lower', vmin = 0, vmax = 5e-6)
+            dif = ax.imshow(ff_emis_total[time,:,:] - ff_emis_total_scaled, cmap ='Reds_r', origin='lower', vmin = 0, vmax = -1e-7)
             fig.colorbar(dif, location='right', pad = 0.05, ax = ax)
 
         fig.suptitle(str(time_list[time]))
         plt.savefig(plotpath + experimentcode + '_' + str(time) + '.png', bbox_inches = 'tight')
         plt.show()
-"""
+# %%

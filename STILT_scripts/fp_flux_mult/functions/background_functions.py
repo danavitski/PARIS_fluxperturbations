@@ -6,7 +6,7 @@ import datetime as dtm
 from tqdm import tqdm
 from functions.fluxfile_functions import *
 
-def get_last_times(t, path, lat, lon, agl, npars=100):
+def get_last_times(t, path, lat, lon, agl, ens_mem_num=None, npars=250):
     """Get last recorded time of every particle for a certain station, using 
     the RData files from the STILT output.
 
@@ -17,13 +17,29 @@ def get_last_times(t, path, lat, lon, agl, npars=100):
     Output variables:
     last_times: dataframe with last times of particles at station
 
-    """
-    lat = str(round(lat,2)).zfill(5)
-    lon= str(round(lon,2)).zfill(6)
-    agl = str(round(agl,2)).zfill(5)
-
-    f = path + '.RData{0}x{1:02}x{2:02}x{3:02}x{4:05}Nx{5:06}Ex{6:05}'
-    f = f.format(t.year, t.month, t.day, t.hour, lat, lon, agl)
+    """  
+    if (lat <= 0):
+        latsign = 'S'
+    else:
+        latsign = 'N'
+    
+    if (lon <= 0):
+        lonsign = 'W'
+    else:
+        lonsign = 'E'
+    
+    lat = '{:.2f}'.format((round(abs(lat),2))).zfill(5)
+    lon= '{:.2f}'.format((round(abs(lon),2))).zfill(6)
+    agl = '{:.0f}'.format((round(int(agl),2))).zfill(5)
+    npars_str = '{:.0f}'.format(npars).zfill(4)
+    
+    if (ens_mem_num != None):
+        ens_mem_num = str(ens_mem_num).zfill(2)
+        f = path + '.RData{0}x{1:02}x{2:02}x{3:02}x{4:05}{5:01}x{6:06}{7:01}x{8:05}x{9:04}x{10:02}'
+        f = f.format(t.year, t.month, t.day, t.hour, lat, latsign, lon, lonsign, agl, npars_str, ens_mem_num)
+    else:
+        f = path + '.RData{0}x{1:02}x{2:02}x{3:02}x{4:05}{5:01}x{6:06}{7:01}x{8:05}x{9:04}'
+        f = f.format(t.year, t.month, t.day, t.hour, lat, latsign, lon, lonsign, agl, npars_str)
     data = pyreadr.read_r(f)
     varname = f.split('/')[-1][6:]
     foot = data[varname]
@@ -87,8 +103,8 @@ def get_bg(start, row, bgdir = '/projects/0/ctdas/PARIS/DATA/background/STILT/')
     """
 
     # Define GLOBAL_LONS and GLOBAL_LATS
-    GLOBAL_LONS = np.arange(-180, 181, 1)
-    GLOBAL_LATS = np.arange(-90, 91, 1)
+    GLOBAL_LONS = np.arange(-179.5, 180.5, 1)
+    GLOBAL_LATS = np.arange(-89.5, 90.5, 1)
 
     dt = row['time'] / 60 # hours
     time = start + dtm.timedelta(hours=dt)
@@ -102,11 +118,21 @@ def get_bg(start, row, bgdir = '/projects/0/ctdas/PARIS/DATA/background/STILT/')
         bg = ds['co2'][time_idx, height_idx, lat_idx, lon_idx]
     return bg
 
-
-def calculate_mean_bg(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl):
+def calculate_mean_bg(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl, ens_mem_num = 1):
     """Calculate mean background concentration for a certain footprint.
     Uses the get_last_times() and get_bg() functions. """
-    last_times = get_last_times(t = fp_starttime, path = RDatapath, npars = npars, lat = lat, lon = lon, agl = agl)
+    last_times = get_last_times(t = fp_starttime, path = RDatapath, npars = npars, lat = lat, lon = lon, agl = agl, ens_mem_num = ens_mem_num)
+    
+    bg = []
+    for y, row in last_times.iterrows():
+        bg.append(get_bg(fp_starttime, row, bgdir = bgpath))
+    
+    return np.mean(bg)
+
+def calculate_mean_bg_ens(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl, ens_mem_num = None):
+    """Calculate mean background concentration for a certain footprint.
+    Uses the get_last_times() and get_bg() functions. """
+    last_times = get_last_times(t = fp_starttime, path = RDatapath, npars = npars, lat = lat, lon = lon, agl = agl, ens_mem_num = ens_mem_num)
     
     bg = []
     for y, row in last_times.iterrows():

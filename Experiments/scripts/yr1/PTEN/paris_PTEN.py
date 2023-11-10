@@ -21,13 +21,11 @@ plotpath = '/projects/0/ctdas/PARIS/CTE-HR/analysis/plots/' + experimentcode + '
 inpath = '/projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/'
 paris_perturbation_path = inpath + experimentcode + '/'
 paris_perturbation_file = paris_perturbation_path + 'paris_ctehr_perturbedflux_yr1_' + experimentcode + '.nc'
-paris_base_path = inpath + 'paris_input_s_u_d9.nc'
+paris_base_path = inpath + 'paris_ctehr_yr1_BASE.nc'
 
 # If the target directory does not yet exist, create it
 if not os.path.exists(paris_perturbation_path):
     os.mkdir(paris_perturbation_path)
-
-shutil.copyfile(paris_base_path, paris_perturbation_file)
 
 paris_base = nc.Dataset(paris_base_path, 'r', format='NETCDF3_CLASSSIC')
 paris_perturbation = nc.Dataset(paris_perturbation_file, 'r+', format='NETCDF3_CLASSSIC')
@@ -57,7 +55,10 @@ ff_list = [
     'I_Off-road',
     'G_Shipping'
 ]
-"""
+# %%
+# COPY BASE FILE SO THAT WE CAN PERTURB IT
+shutil.copyfile(paris_base_path, paris_perturbation_file)
+
 # EXTRACT ENERGY SECTOR EMISSIONS
 energy_array = paris_base.variables['A_Public_power'][:,:,:]
 
@@ -82,23 +83,7 @@ paris_perturbation.variables['flux_ff_exchange_prior'][:] = paris_perturbation.v
 paris_base.close()
 paris_perturbation.close()
 
-"""
-# TEST
-energy_array = paris_base.variables['A_Public_power'][:,:,:]
-energy_array[energy_array > np.percentile(energy_array[energy_array != 0], 90)] = 0
-
-if np.array_equal(energy_array, paris_base.variables['A_Public_power'][:,:,:]):
-    print('Arrays are equal')
-else:
-    print('Arrays are not equal')
-
-dif2 = paris_base.variables['A_Public_power'][:,:,:] - energy_array
-fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize = (16, 9))
-difference = ax.imshow(dif2[1,:,:], origin='lower', vmin = 0, vmax = 1e-10)
-fig.colorbar(difference, orientation='vertical', pad = 0.05, ax = ax)
-
-
-"""
+# %%
 # PLOT
 # If the target directory does not yet exist, create it
 if not os.path.exists(plotpath):
@@ -119,18 +104,17 @@ for time in range(0, len(time_list)):
 
         if side_by_side == True:
             fig, (ax1, ax2, ax3) = plt.subplots(nrows = 1, ncols = 3, figsize = (16, 9))
-            base = ax1.imshow(paris_base.variables['A_Public_power'][time,:,:], origin='lower', vmin = 0, vmax = 1e-9)
-            perturbed = ax2.imshow(perturb, origin='lower', vmin = 0, vmax = 1e-9)
-            difference = ax3.imshow(dif, origin='lower')
+            base = ax1.imshow(paris_base.variables['A_Public_power'][time,:,:], cmap ='Reds_r', origin='lower', vmin = 0, vmax = 1e-9)
+            perturbed = ax2.imshow(perturb, cmap ='Reds_r', origin='lower', vmin = 0, vmax = 1e-9)
+            difference = ax3.imshow(dif, cmap ='Reds_r', origin='lower')
             fig.colorbar(difference, orientation='horizontal', pad = 0.05, ax = [ax1, ax2, ax3])
             
         else:
             fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize = (16, 9))
-            difference = ax.imshow(dif, origin='lower', vmin = 0, vmax = 1e-10)
+            difference = ax.imshow(dif, cmap ='Reds_r', origin='lower', vmin = 0, vmax = 1e-10)
             fig.colorbar(difference, orientation='vertical', pad = 0.05, ax = ax)
 
         fig.suptitle(str(time_list[time]))
         plt.savefig(plotpath + experimentcode + '_' + str(time) + '.png', bbox_inches = 'tight')
         plt.show()
-"""
 # %%

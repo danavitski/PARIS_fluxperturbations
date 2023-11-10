@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -p thin
+#SBATCH -p genoa
 #SBATCH -t 12:00:00 
-#SBATCH -n 64
+#SBATCH -n 16
 #SBATCH -N 1
 #SBATCH --mail-user=daan.kivits@wur.nl
 #SBATCH --mail-type=FAIL,END
@@ -9,13 +9,8 @@
 
 source /home/dkivits/.bashrc 
 
-# Only if using virtual environment!
-module purge
-module load 2021
-module load CDO/1.9.10-gompi-2021a
-module load NCO/5.0.1-foss-2021a
-module load Anaconda3/2021.05
-module load netCDF/4.8.0-gompi-2021a 
+module load 2022
+module load Anaconda3/2022.05
 
 source activate cte-hr-env
 
