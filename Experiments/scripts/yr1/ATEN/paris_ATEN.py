@@ -57,10 +57,10 @@ ff_list = [
 shutil.copyfile(paris_base_path, paris_perturbation_file)
 
 ## INCREASE TOTAL EMISSIONS BY 10% AND SAVE FLUX PERTRUBATION TO NEWLY COPIED FLUX SET
-paris_perturbation.variables['flux_ff_exchange_prior'][:,:,:] = paris_base.variables['flux_ff_exchange_prior'][:,:,:] * 1.1
-
-## SAVE TOTAL EMISSIONS TO NEWLY COPIED FLUX SET
 paris_perturbation.variables['combustion'][:,:,:] = paris_perturbation.variables['combustion'][:,:,:] * 1.1
+
+# RE-CALCULATE TOTAL EMISSIONS INCLUDING CEMENT PRODUCTION
+paris_perturbation.variables['flux_ff_exchange_prior'][:] = paris_perturbation.variables['combustion'][:] + paris_perturbation.variables['cement'][:]
 
 # CLOSE FILES
 paris_base.close()
