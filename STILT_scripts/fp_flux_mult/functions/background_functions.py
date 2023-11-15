@@ -5,6 +5,7 @@ import netCDF4 as nc
 import datetime as dtm
 from tqdm import tqdm
 from functions.fluxfile_functions import *
+import math
 
 def get_last_times(t, path, lat, lon, agl, ens_mem_num=None, npars=250):
     """Get last recorded time of every particle for a certain station, using 
@@ -28,9 +29,11 @@ def get_last_times(t, path, lat, lon, agl, ens_mem_num=None, npars=250):
     else:
         lonsign = 'E'
     
-    lat = '{:.2f}'.format((round(abs(lat),2))).zfill(5)
-    lon= '{:.2f}'.format((round(abs(lon),2))).zfill(6)
-    agl = '{:.0f}'.format((round(int(agl),2))).zfill(5)
+    #lat = '{:.2f}'.format(abs(lat) // 0.01 * 0.01).zfill(5)
+    #lon= '{:.2f}'.format(abs(lon) // 0.01 * 0.01).zfill(6)
+    lat = '{:.2f}'.format(round(abs(lat),2)).zfill(5)
+    lon= '{:.2f}'.format(round(abs(lon),2)).zfill(6)
+    agl = '{:.0f}'.format(int(agl)).zfill(5)
     npars_str = '{:.0f}'.format(npars).zfill(4)
     
     if (ens_mem_num != None):
@@ -118,18 +121,7 @@ def get_bg(start, row, bgdir = '/projects/0/ctdas/PARIS/DATA/background/STILT/')
         bg = ds['co2'][time_idx, height_idx, lat_idx, lon_idx]
     return bg
 
-def calculate_mean_bg(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl, ens_mem_num = 1):
-    """Calculate mean background concentration for a certain footprint.
-    Uses the get_last_times() and get_bg() functions. """
-    last_times = get_last_times(t = fp_starttime, path = RDatapath, npars = npars, lat = lat, lon = lon, agl = agl, ens_mem_num = ens_mem_num)
-    
-    bg = []
-    for y, row in last_times.iterrows():
-        bg.append(get_bg(fp_starttime, row, bgdir = bgpath))
-    
-    return np.mean(bg)
-
-def calculate_mean_bg_ens(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl, ens_mem_num = None):
+def calculate_mean_bg(fp_starttime, RDatapath, bgpath, npars, lat, lon, agl, ens_mem_num = None):
     """Calculate mean background concentration for a certain footprint.
     Uses the get_last_times() and get_bg() functions. """
     last_times = get_last_times(t = fp_starttime, path = RDatapath, npars = npars, lat = lat, lon = lon, agl = agl, ens_mem_num = ens_mem_num)
