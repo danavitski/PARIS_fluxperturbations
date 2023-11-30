@@ -19,12 +19,13 @@ plotpath = '/projects/0/ctdas/PARIS/CTE-HR/analysis/plots/' + experimentcode + '
 inpath = '/projects/0/ctdas/PARIS/CTE-HR/PARIS_OUTPUT/'
 paris_perturbation_path = inpath + experimentcode + '/'
 paris_perturbation_file = paris_perturbation_path + 'paris_ctehr_perturbedflux_yr1_' + experimentcode + '.nc'
-paris_base_path = inpath + 'paris_input_s_u_d9.nc'
+paris_base_path = inpath + 'paris_ctehr_yr1_BASE.nc'
 
 # If the target directory does not yet exist, create it
 if not os.path.exists(paris_perturbation_path):
     os.mkdir(paris_perturbation_path)
 
+# COPY BASE FILE SO THAT WE CAN PERTURB IT
 shutil.copyfile(paris_base_path, paris_perturbation_file)
 
 paris_base = nc.Dataset(paris_base_path, 'r', format='NETCDF3_CLASSSIC')

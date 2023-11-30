@@ -27,6 +27,9 @@ paris_base_path = inpath + 'paris_ctehr_yr1_BASE.nc'
 if not os.path.exists(paris_perturbation_path):
     os.mkdir(paris_perturbation_path)
 
+# COPY BASE FILE SO THAT WE CAN PERTURB IT
+shutil.copyfile(paris_base_path, paris_perturbation_file)
+
 paris_base = nc.Dataset(paris_base_path, 'r', format='NETCDF3_CLASSSIC')
 paris_perturbation = nc.Dataset(paris_perturbation_file, 'r+', format='NETCDF3_CLASSSIC')
 mask_01_02 = nc.Dataset('/projects/0/ctdas/PARIS/Experiments/landmask/paris_countrymask_0.2x0.1deg_2D.nc', 'r', format='NETCDF3_CLASSIC')
@@ -56,9 +59,6 @@ ff_list = [
     'G_Shipping'
 ]
 # %%
-# COPY BASE FILE SO THAT WE CAN PERTURB IT
-shutil.copyfile(paris_base_path, paris_perturbation_file)
-
 # EXTRACT ENERGY SECTOR EMISSIONS
 energy_array = paris_base.variables['A_Public_power'][:,:,:]
 

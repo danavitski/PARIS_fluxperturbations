@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=STILT_PDM
-#SBATCH --time 5-00:00:00                     # WALLTIME limit of 5 days (120 hours)
+#SBATCH --time 2-00:00:00                     # WALLTIME limit of 5 days (120 hours)
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --mem-per-cpu=4G                    # max memory per CPU
+#SBATCH --mem-per-cpu=2G                    # max memory per CPU
 #SBATCH -p fat
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=daan.kivits@wur.nl
@@ -36,7 +36,7 @@ cd $sourcepath
 FILENAME="/projects/0/ctdas/PARIS/DATA/stationfile_all.csv"
 
 # Declare station to run STILT for
-station='PDM'
+station='HFD'
 subdir="${rundir}${station}/"
 
 # First create subdirectory to store STILT output per station

@@ -3,7 +3,7 @@
 #SBATCH -n 52                               # ask for 52 tasks (amount of stations in stationfile_all.csv)
 #SBATCH -N 1                                # ask for 1 node
 #SBATCH --mem-per-cpu=4G                    # max memory per CPU
-#SBATCH -p fat                            # run on the genoa partition
+#SBATCH -p fat                              # run on the genoa partition
 #SBATCH --job-name multi_batch_STILT        # name to display in queue
 #SBATCH --output std.out                    # standard output file
 #SBATCH --error std.err                     # standard error file
@@ -85,5 +85,5 @@ echo "All STILT simulations are done."
 
 # Test if all STILT simulations are done
 echo "Finished succesfully: "
-grep -r "Runs.done/.RDatarun.info*" ${rundir} | wc -l
+grep -r "Runs.done" ${rundir} | wc -l
 echo "Total: {$N_LINES}"

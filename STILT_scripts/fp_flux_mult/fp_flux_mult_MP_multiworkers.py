@@ -1,3 +1,54 @@
+"""
+This script performs the footprint multiplication process using multiple workers.
+
+The script takes input files containing footprints and fluxes, and multiplies them together to calculate the CO2
+concentration at receptor locations. It uses multiple workers to parallelize the computation and improve performance.
+
+For this workflow, STILT (Stochastic Time-Inverted Lagrangian Transport) influence fields stored in a sparse format are expected as input,
+as well as CTE-HR flux fields or PARIS-specific flux fields (which are modified CTE-HR fluxes). 
+
+Usage:
+    python fp_flux_mult_MP_multiworkers.py --station <stationcode> --fluxdir <fluxdir> --fpdir <fpdir> --bgdir <bgdir> --outdir <outdir> 
+    --stiltdir <stiltdir> --obspack_path <obspack_path> --start_date <start_date> --end_date <end_date> --lat_ll <lat_ll> --lat_ur <lat_ur> 
+    --lon_ll <lon_ll> --lon_ur <lon_ur> --lat_step <lat_step> --lon_step <lon_step> --sim_len <sim_len> --npars <npars> --nmonths_split <nmonths_split> 
+    --perturbation <perturbation> --verbose --sum-variables
+
+Arguments:
+
+    --station <stationcode>: Code of station to run the script for (str)
+    --fluxdir <fluxdir>: Directory where flux files are stored (str)
+    --fpdir <fpdir>: Directory where footprint files are stored (str)
+    --bgdir <bgdir>: Directory where (TM3) background files are stored (str)
+    --outdir <outdir>: Directory where output files are stored (str)
+    --stiltdir <stiltdir>: Directory where STILT is executed (str)
+    --obspack_path <obspack_path>: Path to the ObsPack collection zip file (str)
+    --start_date <start_date>: Date from when to subset the ObsPacks (str)
+    --end_date <end_date>: Date up to where to subset the ObsPacks (str)
+    --lat_ll <lat_ll>: Latitude of ll corner to define the grid extent (float)
+    --lat_ur <lat_ur>: Latitude of ur corner to define the grid extent (float)
+    --lon_ll <lon_ll>: Longitude of ll corner to define the grid extent (float)
+    --lon_ur <lon_ur>: Longitude of ur corner to define the grid extent (float)
+    --lat_step <lat_step>: Latitude cell size step (float)
+    --lon_step <lon_step>: Longitude cell size step (float)
+    --sim_len <sim_len>: Simulation length in hours (int)
+    --npars <npars>: Number of particles (int)
+    --nmonths_split <nmonths_split>: Controls in how many pieces the run should be split into multiple multiprocessing pool tasks (int)
+    --perturbation <perturbation>: Controls for which perturbation experiment the fp-flux multiplication script is ran (str)
+    --verbose: Controls whether the script should do logging (bool)
+    --sum-variables: Controls whether the script should sum the fluxvariables or not. TRUE: only produce a "mixed" molefraction field. FALSE: transport all fluxvariables individually and store them in ObsPack (bool)
+
+Note:
+    This script requires the following modules to be loaded onto the HPC or locally:
+
+        - netCDF4
+        - pandas
+        - numpy
+        - xarray
+
+    The rest of the modules should be available in the standard Python 3.11.0 environment.
+
+"""
+
 # Import necessary modules
 import pandas as pd
 import numpy as np
@@ -16,6 +67,10 @@ import tqdm
 from multiprocessing import Pool
 from functools import partial
 import argparse
+import logging
+
+# Set logging options
+logging.basicConfig(level=logging.WARNING, format=' [%(levelname)-7s] (%(asctime)s) py-%(module)-20s : %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 # Load command-line arguments
 parser = argparse.ArgumentParser(description='Flux - footprint multiplication script')
@@ -25,7 +80,6 @@ parser = argparse.ArgumentParser(description='Flux - footprint multiplication sc
 ######################
 # Define command-line arguments
 parser.add_argument('--station', type=str, help='Code of station to run the script for')
-parser.add_argument('--fluxtype', type=str, help='Switch to control what fluxes are used to calculate the pseudo observations. Current options are "CTE-HR" or "PARIS"')
 parser.add_argument('--fluxdir', type=str, help='Directory where flux files are stored')
 parser.add_argument('--fpdir', type=str, help='Directory where footprint files are stored')
 parser.add_argument('--bgdir', type=str, help='Directory where (TM3) background files are stored')
@@ -44,14 +98,14 @@ parser.add_argument('--sim_len', type=int, help='Simulation length in hours (int
 parser.add_argument('--npars', type=int, help='Number of particles (int)')
 parser.add_argument('--nmonths_split', type=int, help='Controls in how many pieces the run should be split into multiple multiprocessing pool tasks (int)')
 parser.add_argument('--perturbation', type=str, help='Controls for which perturbation experiment the fp-flux multiplication script is ran (str)')
-parser.add_argument('--verbose', action="store_true", help='Controls whether the script should do logging (str)')
+parser.add_argument('--verbose', action="store_true", help='Controls whether the script should do logging (bool)')
+parser.add_argument('--sum-variables', action="store_true", help='Controls whether the script should sum the fluxvariables or not. TRUE: only produce a "mixed" molefraction field. FALSE: transport all fluxvariables individually and store them in ObsPack (bool)')
 
 # Parse the command-line arguments
 args = parser.parse_args()
 
 # Access the values of the arguments
 stationcode = args.station
-fluxtype = args.fluxtype
 fluxdir = args.fluxdir
 filepath = args.fpdir
 bgfilepath = args.bgdir
@@ -63,6 +117,7 @@ end_date = args.end_date
 nmonths_split = args.nmonths_split
 perturbation=args.perturbation
 verbose=args.verbose
+sum_vars=args.sum_variables
 
 # Time the script
 start_time = time.time()
@@ -91,17 +146,13 @@ stationsfile = pd.read_csv('/projects/0/ctdas/PARIS/DATA/stationfile_all.csv', h
 stationslist = stationsfile['code']
 
 # CTE-HR variable list to loop over later
-if fluxtype=='PARIS':
-    #fluxvarnamelist = ['A_Public_power','B_Industry','C_Other_stationary_combustion_consumer',
-    #    'F_On-road','H_Aviation','I_Off-road','G_Shipping', 'cement', 'combustion',
-    #    'flux_ff_exchange_prior', 'flux_ocean_exchange_prior', 'flux_fire_exchange_prior',
-    #    'flux_bio_exchange_prior']
-    fluxvarnamelist = ['flux_bio_exchange_prior']
-elif fluxtype=='CTEHR':
-    fluxvarnamelist = ['nep', 'fire', 'ocean', 'combustion']
+if perturbation != None:
+    fluxtype='PARIS'
+    fluxvarnamelist = ['flux_ff_exchange_prior', 'flux_ocean_exchange_prior', 'flux_fire_exchange_prior',
+            'flux_bio_exchange_prior']
 else:
-    print('Input fluxtype not recognized, please select one that is defined in the find_fluxfiles() function')
-
+    fluxtype='CTEHR'
+    fluxvarnamelist = ['nep', 'fire', 'ocean', 'combustion']
 
 ## Load ObsPack
 #coll = collection.get(DOI)
@@ -128,15 +179,15 @@ def process_station(date_pairs):
     return fun(date_pair=date_pairs)
 
 if __name__ == "__main__":
-    
-    if nmonths_split != None:
+    if ((nmonths_split != None and nmonths_split > 1) and (start_date != None and end_date != None)):
+        logging.info("Multiprocessing, running script for the whole time period in " + str(nmonths_split) + " pieces")
 
         # Create list of dates
         datelist = list(date_range(start_date, end_date, nmonths_split))
         
         # Create pairs of consecutive dates
         date_pairs = [(datelist[i], datelist[i + 1]) for i in range(len(datelist) - 1)]
-        print("All Date pairs: " + str(date_pairs))
+        logging.info("All Date pairs: " + str(date_pairs))
 
         fun = partial(
             main,
@@ -145,29 +196,81 @@ if __name__ == "__main__":
             bgfilepath=bgfilepath,
             outpath=outpath,
             stilt_rundir=stilt_rundir,
-            stationsfile=stationsfile,
-            stationcode=stationcode,
-            fluxvarnamelist=fluxvarnamelist,
             perturbationcode = perturbation,
+            fluxvarnamelist=fluxvarnamelist,
             lats=lats,
             lons=lons,
             sim_length=sim_length,
             npars=npars,
             obspack_list=obspack_list,
+            stationsfile=stationsfile,
+            stationcode=stationcode,
             fluxtype=fluxtype,
-            verbose=verbose,
+            sum_vars=sum_vars,
+            start_date=start_date,
+            end_date=end_date,
+            verbose=verbose
             )
-        
+
         # Use the separate function in the map call
         with Pool(processes=nmonths_split) as p:
-            p.map(process_station, date_pairs)
-    else:    
-        main(fluxdir = fluxdir, filepath = filepath, bgfilepath = bgfilepath, 
-                outpath = outpath, stilt_rundir = stilt_rundir, perturbationcode = perturbation,
-                fluxvarnamelist = fluxvarnamelist, lats = lats, lons = lons, start_date = start_date,
-                end_date = end_date, sim_length = sim_length, npars = npars, obspack_list = obspack_list, 
-                stationsfile = stationsfile, stationcode = stationcode, fluxtype = fluxtype, verbose = verbose)
+            p.map(process_station, date_pairs, chunksize=1)
+            p.close()
+            p.join()
+        
+        logging.warning('!!! Check if all intermediate files have been created !!!')
+        
+        # Combine all partial netCDF ObsPack files and delete the intermediate files
+        obspack_orig = [s for s in obspack_list if stationcode.lower() in s.lower()][0]
+        partial_files= glob.glob(outpath + '/pseudo_co2_' + stationcode.lower() + '*.nc')
+        filelist = [xr.open_dataset(file) for file in partial_files]
 
-        # Print total time
-        print("Flux multiplication finished for station " + stationcode + "!")
-        print("--- %s seconds ---" % (time.time() - start_time))
+        logging.warning('Combining the following files: ' + str(partial_files))
+
+        # Define output filestring
+        complete_filestr = outpath + 'pseudo_' + obspack_orig.split('/')[-1]
+
+        # Merge all files
+        combined_dataset = xr.merge(filelist, join='outer')
+        combined_dataset.to_netcdf(complete_filestr)
+        
+        # Delete intermediate files
+        for file in partial_files:
+            os.remove(file)
+
+    elif ((nmonths_split == None or nmonths_split <= 1) and (start_date != None and end_date != None)):
+        logging.info("No multiprocessing, running script for the whole time period at once")
+
+        # Create pairs of consecutive dates
+        date_pair = [start_date, end_date]
+        logging.info("All Date pairs: " + str(date_pair))
+
+        main(
+            filepath=filepath,
+            fluxdir=fluxdir,
+            bgfilepath=bgfilepath,
+            outpath=outpath,
+            stilt_rundir=stilt_rundir,
+            perturbationcode = perturbation,
+            fluxvarnamelist=fluxvarnamelist,
+            lats=lats,
+            lons=lons,
+            sim_length=sim_length,
+            npars=npars,
+            obspack_list=obspack_list,
+            stationsfile=stationsfile,
+            stationcode=stationcode,
+            fluxtype=fluxtype,
+            sum_vars=sum_vars,
+            start_date=start_date,
+            end_date=end_date,
+            date_pair=date_pair,
+            verbose=verbose
+            )
+        
+    else:
+        logging.info("Please provide a start and end date in the format 'YYYY-MM-DD'")
+
+    # Log total time
+    logging.info("Flux multiplication finished for station " + stationcode + "!")
+    logging.info("--- %s seconds ---" % (time.time() - start_time))

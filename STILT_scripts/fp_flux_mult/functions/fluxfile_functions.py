@@ -272,7 +272,7 @@ def filter_files_by_date(file_list, start_date, end_date):
     end_datetime = datetime.strptime(end_date, date_format)
 
     for file_name in file_list:
-        date_str = file_name.split("_")[2][:13]  # adjust the index based on your actual filenames
+        date_str = file_name.split("_")[3][:13]  # adjust the index based on your actual filenames
         file_datetime = datetime.strptime(date_str, "%Yx%mx%dx%H")
 
         if start_datetime <= file_datetime <= end_datetime:
@@ -281,13 +281,15 @@ def filter_files_by_date(file_list, start_date, end_date):
     return filtered_files
 
 
-def parse_datetime(datetime_str):
+def parse_datetime(datetime_dataarray):
     """ Function to parse a datetime string from a netcdf file to a datetime object. 
     NOTE: only the first 19 characters are parsed, because the netcdf files often contain
     a string with the format 'YYYY-MM-DDTHH:MM:SS' and some extra unwanted characters.
     
     """
-    return datetime.strptime(datetime_str[0:19].decode('utf-8'), '%Y-%m-%dT%H:%M:%SZ')
+    #return pd.to_datetime(datetime_str[0:19].decode('utf-8'), '%Y-%m-%dT%H:%M:%S')
+    datetime_str = datetime_dataarray.astype(str).str[0:19]
+    return pd.to_datetime(datetime_str, format='%Y-%m-%dT%H:%M:%S')
 
 
 def coordinate_list(lat_ll, lat_ur, lon_ll, lon_ur, lat_step, lon_step):
@@ -350,8 +352,8 @@ def footprint_hours(fp_filelist, simulation_len):
     return times
 
 
-def footprints_extract_starttime(fp_filelist):
-    """ Function to extract the start and end time of the footprint files.
+def footprint_list_extract_starttime(fp_filelist):
+    """ Function to extract the start time of A LIST OF footprint files.
     """
     # Define time string
     if len(fp_filelist[0].split(sep='x')) == 8:
@@ -364,8 +366,8 @@ def footprints_extract_starttime(fp_filelist):
     return fp_datetime_start
 
 
-def footprints_extract_endtime(fp_filelist):
-    """ Function to extract the start and end time of the footprint files.
+def footprint_list_extract_endtime(fp_filelist):
+    """ Function to extract the end time of A LIST OF footprint files.
     """
     # Define time string
     if len(fp_filelist[0].split(sep='x')) == 8:
@@ -390,7 +392,7 @@ def footprint_extract_npars(fp_file):
 
 
 def footprint_extract_time(fp_file):
-    """ Function to extract the start and end time of the footprint files.
+    """ Function to extract the start time of A SPECIFIC footprint file.
     """
     # Define time string
     if len(fp_file.split(sep='x')) == 8:
@@ -408,7 +410,10 @@ def find_fluxfiles(fluxdir, fluxtype, perturbationcode=None, variablelist_files=
     fluxstring = []
     
     if fluxtype == "PARIS":
-        fluxstring += sorted(glob.glob(fluxdir + '/' + perturbationcode + '/paris_ctehr_*.nc'))
+        if perturbationcode == 'BASE_SS':
+            fluxstring += sorted(glob.glob(fluxdir + '/BASE/paris_ctehr_*.nc'))
+        else:
+            fluxstring += sorted(glob.glob(fluxdir + '/' + perturbationcode + '/paris_ctehr_*.nc'))
     
     elif fluxtype == "CTEHR":
         for var in variablelist_files:
@@ -420,7 +425,7 @@ def find_fluxfiles(fluxdir, fluxtype, perturbationcode=None, variablelist_files=
     return fluxstring
 
 
-def open_fluxfiles(fluxfile_list, start_date=None, end_date=None, fluxtype=None, sum=False, variablelist_vars=None):
+def open_fluxfiles(fluxfile_list, sim_len=240, mp_start_date=None, mp_end_date=None, fluxtype=None, variablelist_vars=None):
     """ Function to open all files in fluxstring as xr_mfdataset, and sum 
     all the variables in variablelist. Choose between multiple fluxtypes, currently still limited to 
     "CTEHR" and "PARIS" (03-11-2023)."""
@@ -428,14 +433,12 @@ def open_fluxfiles(fluxfile_list, start_date=None, end_date=None, fluxtype=None,
     if fluxtype == "PARIS":        
         # Load fluxfiles into one mfdataset 
         ds = xr.open_mfdataset(fluxfile_list, chunks={'time': -1, 'lat': -1, 'lon': -1})
-        
-        if start_date != None and end_date != None:
-            ds = ds.sel(time=slice(start_date, end_date))
 
-        # Option to sum over all variables, or not!
-        if sum==True:
-            ds = sum_variables(ds, variablelist_vars)
-        
+        if mp_start_date != None and mp_end_date != None:
+            # Make sure the fluxfiles contain information for the backward simulated hours too!
+            start_date_corrected = datetime.strptime(mp_start_date, "%Y-%m-%d") - timedelta(hours=sim_len)
+            ds = ds.sel(time=slice(start_date_corrected, mp_end_date))
+
         # Subset xarray ds only neccessary variables
         return ds[variablelist_vars]
 
@@ -443,10 +446,6 @@ def open_fluxfiles(fluxfile_list, start_date=None, end_date=None, fluxtype=None,
         # Load fluxfiles into one mfdataset 
         ds = xr.open_mfdataset(fluxfile_list, combine='by_coords', chunks={'time': -1, 'lat': -1, 'lon': -1})
     
-        # Option to sum over all variables, or not!
-        if sum==True:
-            ds = sum_variables(ds, variablelist_vars)
-        
         # Subset xarray ds only neccessary variables
         return ds[variablelist_vars]
 
@@ -459,6 +458,9 @@ def sum_variables(dset, listofvars):
     data = 0
     for var in listofvars:
         data = data + dset[var][:, :, :]  # slice of each variable
+        
+    #dset['mixed'] = data
+    #dset = dset.drop(listofvars)
     return data
 
 
@@ -482,41 +484,109 @@ def get_latlon_indices(footprint_df, lats, lons):
         np.round(footprint_df.variables['Latitude'][:].tolist(), 4))]
     lon_indices = [lons.index(i) for i in list(
         np.round(footprint_df.variables['Longitude'][:].tolist(), 4))]
-
+    
     lat_indices = xr.DataArray(lat_indices, dims=['pos'])
     lon_indices = xr.DataArray(lon_indices, dims=['pos'])
     return lat_indices, lon_indices
 
 
-def find_footprint_timeindex(footprint_df, fp_starttime, fp_filelist):
-    """ Function to get the hours since the start of the footprint file. """
-    fp_filelist_starttime = footprints_extract_starttime(fp_filelist)
+def find_footprint_flux_timeindex(flux_dataset, footprint_df, fp_starttime):
+    """ Function to find the index of the current timestamp in a given flux file. """
+    # First calculate a list of hours since the start of the input footprint file
+    hours_relative_to_start_fp = (-1*((footprint_df.variables['Time'][:]).astype(int)))
     
-    # Calculate hours since start of CTE-HR flux file to use later for indexing
-    time_diff = (fp_starttime - fp_filelist_starttime)
-    hours_since_start_of_ds = time_diff.seconds // 3600 + time_diff.days * 24
-    hours_into_file = (hours_since_start_of_ds -
-                       footprint_df.variables['Time'][:]).astype(int)
-    hours_into_file = xr.DataArray(hours_into_file, dims=['pos'])
-    return hours_into_file
+    # Calculate time difference between flux dataset and input footprint file
+    fp_flux_timediff = (flux_dataset['time'] - np.datetime64(fp_starttime))
 
+    # Extract index of the smallest time difference (which is the timestamp 
+    # in the flux dataset closest to the start time of the footprint file)
+    fp_flux_startindex = np.abs(fp_flux_timediff).argmin().values
+    #logging.info('Footprint starting time is the following index in flux dataset: ' + str(fp_flux_startindex))
 
-def get_flux_contribution_mixed(flux_dataset, time_index_list, lat_index_list, lon_index_list, footprint_df, infl_varname):
-    """ Function to get the MIXED flux contribution of a footprint file, with list indexing."""
+    # Calculate a list of indices of the footprint file relative to the start 
+    # of the flux dataset
+    fp_flux_diff_indexlist = fp_flux_startindex + hours_relative_to_start_fp
     
-    flux_contribution_perhr = flux_dataset[time_index_list, lat_index_list,
-                                        lon_index_list] * footprint_df.variables[infl_varname][:]
-    flux_contribution_sum = flux_contribution_perhr.sum().compute().values
-    return flux_contribution_sum
+    # Create xr.DataArray of indices to use for indexing the fluxfile later
+    hours_into_fluxfile = xr.DataArray(fp_flux_diff_indexlist, dims=['pos'])
 
-
-def get_flux_contribution_ss(flux_dataset, time_index_list, lat_index_list, lon_index_list, footprint_df, infl_varname, variablelist_vars):
-    """ Function to get the SECTOR-SPECIFIC flux contribution of a footprint file, with list indexing."""
+    return hours_into_fluxfile
     
-    delayed_results = [dask.delayed(flux_dataset[v][time_index_list, lat_index_list, lon_index_list] * footprint_df.variables[infl_varname][:]).sum() for v in variablelist_vars]
-    sumlist = [result.item() for result in dask.compute(*delayed_results)]
 
-    return sumlist
+def get_flux_contribution(flux_dataset, time_index_list, lat_index_list, lon_index_list, footprint_df, infl_varname, variablelist_vars, 
+                         outdir = '/projects/0/ctdas/PARIS/DATA/obspacks/', sum_vars=None, perturbationcode=None):
+    """ Function to get the flux contribution of a footprint file, with list indexing. 
+    Choose between either a mixed or sector-specific flux contribution.
+    """
+    import inspect
+
+    if sum_vars==True:
+        logging.info('Summing variables!')
+
+        if perturbationcode != 'BASE':
+            if perturbationcode=='HGER':
+                sumvar = ['flux_ff_exchange_prior']
+            elif perturbationcode=='ATEN':
+                sumvar = ['flux_ff_exchange_prior']
+            elif perturbationcode=='PTEN':
+                sumvar = ['flux_ff_exchange_prior']
+            elif perturbationcode=='HFRA':
+                sumvar = ['flux_ff_exchange_prior']
+            elif perturbationcode=='DFIN':
+                sumvar = ['flux_bio_exchange_prior']
+
+            cont_perhr_ss = dask.delayed(sum_dataset[sumvar][time_index_list, lat_index_list,
+                                        lon_index_list] * footprint_df.variables[infl_varname][:])
+            
+            basepath = outdir.split('/')[:-1] + '/BASE/'
+            if os.path.exists(basepath):
+                base_ds = xr.open_dataset(glob.glob(basepath + '*.nc'))
+                base_sumvar = variablelist_vars.remove(sumvar)
+                base_cont_perhr_ss = sum_variables(base_ds, base_sumvar)
+                
+                mixed = (base_cont_perhr_ss + cont_perhr_ss).sum().compute(scheduler="processes").item()
+
+            else:
+                logging.error('"BASE" directory not under the parent directory ' + outdir.split('/')[:-1] + '! Please put it there or fix the path in the ' + inspect.currentframe().f_code.co_name + ' function.')
+            
+            return mixed
+        
+        else:
+            sum_dataset = sum_variables(flux_dataset, listofvars=variablelist_vars)
+            cont_perhr = dask.delayed(sum_dataset[time_index_list, lat_index_list,
+                                                    lon_index_list] * footprint_df.variables[infl_varname][:])
+            
+            mixed = cont_perhr.sum().compute(scheduler="processes").item()
+            return mixed
+    
+    else:
+        logging.info('Not summing variables!')
+        cont_ss = [dask.delayed(flux_dataset[v][time_index_list, lat_index_list, 
+                                                    lon_index_list] * footprint_df.variables[infl_varname][:]).sum() 
+                                                    for v in variablelist_vars]
+        mixed_list = [result.item() for result in dask.compute(*cont_ss, scheduler="processes")]
+        return mixed_list
+
+
+def create_intermediate_dict(dict_obj, cont, background, key, sum_vars=None, perturbationcode=None):   
+    if ((sum_vars==True) & (type(cont) != list)):
+        # If sum_vars is True, cont itself is the total contribution
+        logging.info(f'Mixed flux contribution is {cont}')           
+        
+        pseudo_obs = background + cont
+        values = [background, cont, pseudo_obs]
+    else:
+        # If sum_vars is False, cont is a list of values, so we have to sum it to get the total contribution
+        contribution_mixed = sum(cont)
+        logging.info(f'Mixed flux contribution is {contribution_mixed}')
+
+        pseudo_obs = background + contribution_mixed
+        values = cont + [background, contribution_mixed, pseudo_obs]
+
+    # Save keys and values in summary_dict
+    dict_obj[key] = values
+
+    return dict_obj
 
 
 def create_obs_sim_dict_ens(flux_dataset, fp_filelist, lats, lons, RDatapath,
@@ -568,18 +638,18 @@ def create_obs_sim_dict_ens(flux_dataset, fp_filelist, lats, lons, RDatapath,
                 
                 # Extract latitude indices from sparse footprint file and insert into xr.DataArray for later indexing
                 lat_indices, lon_indices = get_latlon_indices(footprint_df, lats, lons)
-                hours_into_file = find_footprint_timeindex(footprint_df=footprint_df, fp_starttime=fp_starttime,
+                hours_into_file = find_footprint_flux_timeindex(footprint_df=footprint_df, fp_starttime=fp_starttime,
                                                         fp_filelist = fp_filelist)
 
-                logging.info(f'This footprint has {len(lat_indices)} values, and ran for {len(np.unique(hours_into_file))} hours backwards in time')
+                logging.info(f'This footprint has {len(lat_indices)} values, has {len(np.unique(hours_into_file))} timesteps and goes {len(np.unique(hours_into_file))} hours backwards in time')
 
                 # Calculate mean background concentration for current footprint
-                bg = calculate_mean_bg_ens(fp_starttime=fp_starttime, RDatapath=RDatapath, bgpath=bgpath,
+                bg = calculate_mean_bg(fp_starttime=fp_starttime, RDatapath=RDatapath, bgpath=bgpath,
                                     npars=npars, lat=station_lat, lon=station_lon, agl=station_agl, ens_mem_num=i+1)
 
                 logging.info(f'Mean background is {bg}')
 
-                mixed = get_flux_contribution_mixed(flux_dataset=flux_dataset, time_index_list=hours_into_file,
+                mixed = get_flux_contribution(flux_dataset=flux_dataset, time_index_list=hours_into_file,
                                             lat_index_list=lat_indices, lon_index_list=lon_indices,
                                             footprint_df=footprint_df, infl_varname='Influence')
                 
@@ -610,13 +680,11 @@ def create_obs_sim_dict_ens(flux_dataset, fp_filelist, lats, lons, RDatapath,
 
 def create_obs_sim_dict(flux_dataset, fp_filelist, lats, lons, RDatapath,
                         bgpath, npars, station_lat, station_lon, station_agl, stationname,
-                        variablelist_vars, stilt_rundir, save_as_pkl=False):
+                        variablelist_vars, stilt_rundir, sum_vars, perturbationcode = None,
+                        save_as_pkl=False):
     """ Function to create a dictionary with the background, mixed and pseudo observation. 
-    
     """
-    # Create empty dictionary
-    summary_dict = {}
-    
+
     logging.info('Current station is ' + stationname + ', with lat = ' + str(station_lat) + ', lon = ' + str(station_lon) + ', and agl = ' + str(station_agl))
     logging.info('Starting calculation of flux contributions and pseudo observations.')
 
@@ -625,6 +693,8 @@ def create_obs_sim_dict(flux_dataset, fp_filelist, lats, lons, RDatapath,
     if os.path.isfile(missing_fp_filestr):
         missing_fp_file = pd.read_csv(missing_fp_filestr)
         missing_fp_filelist = list(missing_fp_file['ident'])
+
+    summary_dict={}
 
     # Loop over all footprint files
     for i in tqdm(range(0, len(fp_filelist))):
@@ -654,35 +724,30 @@ def create_obs_sim_dict(flux_dataset, fp_filelist, lats, lons, RDatapath,
 
             # Extract latitude indices from sparse footprint file and insert into xr.DataArray for later indexing
             lat_indices, lon_indices = get_latlon_indices(footprint_df, lats, lons)
-            hours_into_file = find_footprint_timeindex(footprint_df=footprint_df, fp_starttime=fp_starttime,
-                                                    fp_filelist=fp_filelist)
+            hours_into_file = find_footprint_flux_timeindex(flux_dataset=flux_dataset, footprint_df=footprint_df, 
+                                                            fp_starttime=fp_starttime)
 
-            logging.info(f'This footprint has {len(lat_indices)} values, and ran for {len(np.unique(hours_into_file))} hours backwards in time')
+            logging.info(f'This footprint has {len(lat_indices)} values, has {len(np.unique(hours_into_file))} timesteps and goes {len(np.unique(hours_into_file))} hours backwards in time')
 
             # Calculate CTE-HR contribution
-            mixed = get_flux_contribution_ss(flux_dataset=flux_dataset, time_index_list=hours_into_file,
-                                        lat_index_list=lat_indices, lon_index_list=lon_indices,
-                                        footprint_df=footprint_df, infl_varname='Influence',
-                                        variablelist_vars=variablelist_vars)
+            cont = get_flux_contribution(flux_dataset=flux_dataset, time_index_list=hours_into_file,
+                                                lat_index_list=lat_indices, lon_index_list=lon_indices,
+                                                footprint_df=footprint_df, infl_varname='Influence',
+                                                variablelist_vars=variablelist_vars, sum_vars=sum_vars,
+                                                perturbationcode=perturbationcode)
+
         elif ident in missing_fp_filelist:
             logging.info(f'Footprint is empty and no surface exchange with particles is recorded, taking background concentration at station location as pseudo observation.')
-            mixed = [0] * len(variablelist_vars)
+            if sum_vars==True:
+                logging.info('Summing variables!')
+                cont = 0
 
+            else:
+                logging.info('Not summing variables!')
+                cont = [0] * len(variablelist_vars)
+        
         # Calculate pseudo observation from bg and flux contribution            
-        if type(mixed) != int:
-            contribution_mixed = sum(mixed)
-            logging.info(f'Mixed flux contribution is {contribution_mixed}')
-
-            pseudo_obs = bg + contribution_mixed
-            values = mixed + [bg, contribution_mixed, pseudo_obs]
-        else:
-            logging.info(f'Mixed flux contribution is {mixed}')           
-            
-            pseudo_obs = bg + mixed
-            values = [bg, mixed, pseudo_obs]
-           
-        # Save keys and values in summary_dict
-        summary_dict[key] = values
+        summary_dict = create_intermediate_dict(dict_obj=summary_dict, cont=cont, background=bg, key=key, sum_vars=sum_vars, perturbationcode=perturbationcode)
 
     logging.info('Finished calculating flux contributions and pseudo observations.')
 
@@ -698,7 +763,9 @@ def create_obs_sim_dict(flux_dataset, fp_filelist, lats, lons, RDatapath,
 
         return summary_dict
 
-def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, stationcode, outpath='/projects/0/ctdas/PARIS/DATA/obspacks/'):
+def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, stationcode, start_date = '2021-01-01', end_date = '2022-01-01', 
+                          sum_vars = None, mp_start_date = None, mp_end_date = None,
+                          outpath='/projects/0/ctdas/PARIS/DATA/obspacks/'):
     """ Function to write a dictionary (that contains the simulation results, the background,
     and pseudo_observations) to a copy of the original ObsPacks in the ObsPack collection.
 
@@ -707,6 +774,11 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
     obs_sim_dict: dictionary that contains the simulation results, the background, and observations
     stationcode: stationcode of the station
     outpath: path to the output directory
+    sum_vars: boolean that indicates whether the variables in the ObsPack file should be summed
+    mp_start_date: start date of the current multiprocessing run
+    mp_end_date: end date of the current multiprocessing run
+    start_date: start date of the simulation
+    end_date: end date of the simulation
     """
     # Find ObsPack file in list of ObsPacks
     obspack_orig = [s for s in obspack_list if stationcode.lower() in s.lower()][0]
@@ -714,8 +786,22 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
         print(f"No ObsPack found for station code {stationcode}")
         return
 
-    # Define new obspack filename
-    obspack = os.path.join(outpath, 'pseudo_' + os.path.basename(obspack_orig))
+    # Check if outpath exists, if not, create it
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
+    
+    # Extract multiprocessing timestr to create ObsPack object to save to later
+    if mp_start_date != None and mp_end_date != None:
+        mp_start_datetime = datetime.strptime(mp_start_date, "%Y-%m-%d")
+        mp_end_datetime = datetime.strptime(mp_end_date, "%Y-%m-%d")
+        
+        timestr = str(mp_start_datetime.strftime("%Y-%m-%d-%H:%M")) + '-' + str(mp_end_datetime.strftime("%Y-%m-%d-%H:%M"))
+        
+        # Put simulation results in seperate run-dependent ObsPack files to combine later
+        obspack = os.path.join(outpath, 'pseudo_' + os.path.basename(os.path.splitext(obspack_orig)[0]) + '_' + timestr + '.nc')
+    else:
+        # Put all results into one obspack file (only one run, so no intermediate files needed)
+        obspack = os.path.join(outpath, 'pseudo_' + os.path.basename(obspack_orig))
 
     # Copy ObsPack file to newfile location to at a fill later stage
     #logging.info(f'Copying ObsPack file from {obspack_orig} to {obspack}')
@@ -733,13 +819,14 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
     # Open newfile in 'append' mode
     with xr.open_dataset(obspack_orig, decode_times=False) as ds:
         
-        # Resample to hourly data
-        logging.info('Resampling to hourly data')
         ds['time'] = pd.to_datetime(ds['time'], unit='s')
-        logging.info(ds['time'])
 
         # Copy variable 'value' to new variables to fill later
-        new_variables = variablelist_vars + ['mixed', 'background', 'pseudo_observation']
+        if sum_vars == True:
+            new_variables = ['background', 'mixed', 'pseudo_observation']
+        else:
+            new_variables = variablelist_vars + ['background', 'mixed', 'pseudo_observation']
+
         for new_variable_name in new_variables:
             dummy_var = xr.DataArray(
                 name=new_variable_name,
@@ -748,9 +835,11 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
             )
             ds[new_variable_name] = dummy_var
         
-        # Select only the time range of the simulation (add 3600 seconds to max_time to include last hour)
-        #subds = ds.sel(time=slice(min_time, max_time + 3600))
-        subds = ds.sel(time=slice(datetime(2021,1,1), datetime(2022,1,1)))
+        # Resample to hourly data
+        logging.info('Resampling to hourly data')
+
+         # Select only the time range of the simulation
+        subds = ds.sel(time=slice(mp_start_datetime, mp_end_datetime))
         non_numeric_vars = [var for var in subds.variables if subds[var].dtype not in ['float64', 'int64','float32','int32', 'int8']][:]
 
         #subds_rs1 = subds['value'].resample(time='1H').nearest(tolerance=None)
@@ -765,7 +854,6 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
         #logging.info(len(missing_time_values))
         #logging.info(missing_time_values)
 
-        
         #logging.info(subds['value'].sel(time='2021-12-02T18:00:00.000000000', method='nearest'))
         #logging.info(subds_rs1.sel(time='2021-12-02T18:00:00.000000000', method='nearest'))
         #logging.info(subds_rs2['value'].sel(time='2021-12-02T18:00:00.000000000', method='nearest'))
@@ -780,11 +868,15 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
         #### NOTE: the non-numerical ObsPack variables are thrown out during the resampling process,
         #### so they have to be resampled manually.
         # Manually resample ObsPack start_time element
-        subds[non_numeric_vars[0]] = subds[non_numeric_vars[0]] - np.timedelta64(30, 'M')
-        #subds[non_numeric_vars[0]] = subds[non_numeric_vars[0]] - timedelta(minutes=30)
+        #subds[non_numeric_vars[0]] = pd.to_datetime(subds[non_numeric_vars[0]]) - np.timedelta64(30, 'm')
+        #logging.info(subds[non_numeric_vars[0]])
 
         # Manually resample ObsPack datetime element
-        subds[non_numeric_vars[1]] = xr.apply_ufunc(parse_datetime, subds[non_numeric_vars[1]], vectorize=True) - timedelta(minutes=30)
+        #subds[non_numeric_vars[1]] = xr.apply_ufunc(parse_datetime, subds[non_numeric_vars[1]], vectorize=True) - timedelta(minutes=30)
+        #subds[non_numeric_vars[1]] = pd.to_datetime(xr.apply_ufunc(parse_datetime, subds[non_numeric_vars[1]], vectorize=True, output_dtypes=[np.datetime64])) - np.timedelta64(30, 'M')
+        #logging.info(parse_datetime(subds[non_numeric_vars[1]]) - pd.to_timedelta('30T'))
+        #subds[non_numeric_vars[1]] = parse_datetime(subds[non_numeric_vars[1]]) - pd.to_timedelta('30T')
+        #logging.info(subds[non_numeric_vars[1]])
 
         # Calculate time differences only once
         #ds_time_seconds = ((subds['time'] - obspack_basetime).values.astype('timedelta64[s]')).astype(np.int64)
@@ -809,50 +901,54 @@ def write_dict_to_ObsPack(obspack_list, obs_sim_dict, variablelist_vars, station
 
             # Write values to new variables in new ObsPack file
             for v in new_variables:
-                subds[v][diff_index] = values[variablelist_vars.index(v)]
+                subds[v][diff_index] = values[new_variables.index(v)]
 
     # Save and close the new file
     logging.info(f'Writing results to {obspack}')
     subds.to_netcdf(obspack, mode='w')
 
-def main(filepath, sim_length, fluxdir, stilt_rundir, fluxvarnamelist, perturbationcode, stationsfile, stationcode,
-         outpath, bgfilepath, npars, obspack_list, lats, lons, verbose, fluxtype, date_pair):
+def main(filepath, sim_length, fluxdir, stilt_rundir, fluxvarnamelist,  stationsfile, stationcode, outpath, bgfilepath, npars, obspack_list, 
+         lats, lons, perturbationcode=None, sum_vars=None, verbose=None, fluxtype=None, start_date=None, end_date=None, date_pair=None):
     """ Main function to run the footprint - flux multiplication script. """
 
     if verbose == True:
         logging.basicConfig(level=logging.INFO, format=' [%(levelname)-7s] (%(asctime)s) py-%(module)-20s : %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     else:
-        logging.basicConfig(level=logging.CRITICAL)
+        logging.basicConfig(level=logging.WARNING, format=' [%(levelname)-7s] (%(asctime)s) py-%(module)-20s : %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     # Get 3D station location
     lat,lon,agl = get_3d_station_location(stationsfile, stationcode, colname_lat='lat', colname_lon='lon',
                                             colname_agl='corrected_alt')  
 
     # Get list of footprint files for station
-    sparse_files = sorted(glob.glob(filepath + 'footprint_' + stationcode + '_2021x01x01x14*.nc'))
+    sparse_files = sorted(glob.glob(filepath + 'footprint_' + stationcode + '*.nc'))
 
     if fluxtype == 'PARIS':
         # Only once per station, create list of all PARIS flux files
         fluxstring = find_fluxfiles(fluxdir = fluxdir, perturbationcode=perturbationcode, fluxtype=fluxtype)
-        
+
         # Filter list of footprint files by date range (using start_date and end_date, if they exist!)
         if date_pair != None:
-            start_date, end_date = date_pair
-            sparse_files = filter_files_by_date(sparse_files, start_date, end_date)
+            mp_start_date, mp_end_date = date_pair
+            sparse_files = filter_files_by_date(sparse_files, mp_start_date, mp_end_date)
 
-            # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
-            cte_ds = open_fluxfiles(fluxstring, start_date = start_date, end_date = end_date, variablelist_vars = fluxvarnamelist, fluxtype=fluxtype)
-        else:
-            # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
-            cte_ds = open_fluxfiles(fluxstring, variablelist_vars = fluxvarnamelist, fluxtype=fluxtype)
-
+        # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
+        cte_ds = open_fluxfiles(fluxstring, sim_len=sim_length, mp_start_date = mp_start_date, 
+                                mp_end_date = mp_end_date, variablelist_vars = fluxvarnamelist, 
+                                fluxtype=fluxtype)
+        
         # Loop over all footprints files
         obs_sim_dict = create_obs_sim_dict(fp_filelist = sparse_files, flux_dataset = cte_ds,
-                            lats = lats, lons = lons, RDatapath = filepath, 
-                            bgpath = bgfilepath, npars = npars, station_lat = lat, station_lon = lon, 
-                            station_agl = agl, stationname = stationcode, variablelist_vars = fluxvarnamelist,
-                            stilt_rundir = stilt_rundir, save_as_pkl=False)
-                            
+                    lats = lats, lons = lons, RDatapath = filepath, 
+                    bgpath = bgfilepath, npars = npars, station_lat = lat, station_lon = lon, 
+                    station_agl = agl, stationname = stationcode, variablelist_vars = fluxvarnamelist,
+                    stilt_rundir = stilt_rundir, sum_vars=sum_vars, perturbationcode=perturbationcode, save_as_pkl=False)
+
+        write_dict_to_ObsPack(obspack_list = obspack_list, obs_sim_dict = obs_sim_dict, sum_vars = sum_vars,
+                        variablelist_vars=fluxvarnamelist, stationcode = stationcode, 
+                        mp_start_date= mp_start_date, mp_end_date = mp_end_date,
+                        start_date= start_date, end_date = end_date, outpath = outpath)
+ 
     elif fluxtype == 'CTEHR':
         # Define which CTE-HR variables to find fluxfiles for
         fluxfilenamelist = ['nep', 'fire', 'ocean', 'anthropogenic']
@@ -862,27 +958,37 @@ def main(filepath, sim_length, fluxdir, stilt_rundir, fluxvarnamelist, perturbat
 
         # Only once per station, create list of all CTE-HR flux files
         fluxstring = find_fluxfiles(fluxdir = fluxdir, variablelist_files = fluxfilenamelist, months = mons, fluxtype=fluxtype)
+        
+        if date_pair != None:
+            start_date, end_date = date_pair
+            sparse_files = filter_files_by_date(sparse_files, start_date, end_date)
 
-        # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
-        cte_ds = open_fluxfiles(fluxstring, variablelist_vars = fluxvarnamelist, fluxtype=fluxtype)  
- 
-        # Loop over all footprints files
-        obs_sim_dict = create_obs_sim_dict(fp_filelist = sparse_files, flux_dataset = cte_ds,
-                            lats = lats, lons = lons, list_of_mons = mons, RDatapath = filepath, 
-                            bgpath = bgfilepath, npars = npars, station_lat = lat, station_lon = lon, 
-                            station_agl = agl, stationname = stationcode, variablelist_vars = fluxvarnamelist,
-                            stilt_rundir = stilt_rundir, save_as_pkl=False)
+            # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
+            cte_ds = open_fluxfiles(fluxstring, sim_len=sim_length, start_date = start_date, 
+                                    end_date = end_date, variablelist_vars = fluxvarnamelist, 
+                                    fluxtype=fluxtype)
+            
+            # Loop over all footprints files
+            obs_sim_dict = create_obs_sim_dict(fp_filelist = sparse_files, flux_dataset = cte_ds,
+                        lats = lats, lons = lons, RDatapath = filepath, 
+                        bgpath = bgfilepath, npars = npars, station_lat = lat, station_lon = lon, 
+                        station_agl = agl, stationname = stationcode, variablelist_vars = fluxvarnamelist,
+                        stilt_rundir = stilt_rundir, sum_vars=sum_vars, save_as_pkl=False)
 
-    write_dict_to_ObsPack(obspack_list = obspack_list, obs_sim_dict = obs_sim_dict, 
-                          variablelist_vars=fluxvarnamelist, stationcode = stationcode, outpath = outpath)
-    
+            write_dict_to_ObsPack(obspack_list = obspack_list, obs_sim_dict = obs_sim_dict, sum_vars = sum_vars,
+                          variablelist_vars=fluxvarnamelist, stationcode = stationcode, 
+                          start_date=start_date, end_date=end_date, outpath = outpath)
+
+    else:
+        print("Please provide a valid fluxtype (choose between either 'PARIS' or 'CTEHR' for now)!")
+
     logging.info(f'Finished writing results to ObsPack file for station {stationcode}')
 
 def compare_ens_members(filepath, sim_length, fluxdir, fluxfilenamelist, fluxvarnamelist, stationsfile,
         bgfilepath, lats, lons, stationcode):
     
     # Get list of footprint files for station
-    sparse_files = sorted(glob.glob(filepath + 'footprint_' + stationcode + '_2021x07x05x17*.nc'))
+    sparse_files = sorted(glob.glob(filepath + 'footprint_' + stationcode + '*.nc'))
 
     # Extract all unique months between start and end time
     mons = footprint_unique_months(sparse_files, sim_length)
@@ -891,7 +997,7 @@ def compare_ens_members(filepath, sim_length, fluxdir, fluxfilenamelist, fluxvar
     fluxstring = find_fluxfiles(fluxdir = fluxdir, variablelist_files = fluxfilenamelist, months = mons, fluxtype='CTE-HR')
 
     # Open all files in fluxstring as xr_mfdataset, and add variables in variablelist
-    cte_ds = open_fluxfiles(fluxstring, variablelist_vars = fluxvarnamelist)
+    cte_ds = open_fluxfiles(fluxstring, sim_len=sim_length, variablelist_vars = fluxvarnamelist)
 
     # Get 3D station location
     lat,lon,agl = get_3d_station_location(stationsfile, stationcode, colname_lat='lat', colname_lon='lon',
@@ -899,7 +1005,7 @@ def compare_ens_members(filepath, sim_length, fluxdir, fluxfilenamelist, fluxvar
  
     # Loop over all footprints files
     pseudo_df, mixed_df = create_obs_sim_dict_ens(fp_filelist = sparse_files, flux_dataset = cte_ds,
-                        lats = lats, lons = lons, list_of_mons = mons, RDatapath = filepath, 
+                        lats = lats, lons = lons, RDatapath = filepath, 
                         bgpath = bgfilepath, station_lat = lat, station_lon = lon, 
                         station_agl = agl, stationname = stationcode)
     

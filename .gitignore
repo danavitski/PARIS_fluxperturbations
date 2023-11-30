@@ -37,3 +37,13 @@ STILT_scripts/fp_flux_mult/multiworkers_test.py
 STILT_scripts/fp_flux_mult/fp_flux_mult.py
 STILT_scripts/plotting/check_dif_concentration.ipynb
 STILT_scripts/plotting/check_dif_footprints.ipynb
+pstat.py
+*.report
+*.log
+*.md
+*/submit_fluxes.sh
+STILT_scripts/fp_flux_mult/combine_ObsPack_test.ipynb
+STILT_scripts/fp_flux_mult/extract_stationinfo_from_ObsPack.py
+STILT_scripts/fp_flux_mult/for_Ruben.ipynb
+STILT_scripts/fp_flux_mult/fp_flux_mult_MP_submit_srun.sh
+STILT_scripts/fp_flux_mult/fp_name_test.ipynb

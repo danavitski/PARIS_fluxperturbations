@@ -7,10 +7,11 @@
 #SBATCH --mail-type=FAIL,END
 #SBATCH --job-name=PARIS_PTEN
 
-source /home/dkivits/.bashrc 
-
+#module purge
 module load 2022
 module load Anaconda3/2022.05
+module load CDO/2.0.6-gompi-2022a
+module load NCO/5.1.0-foss-2022a
 
 source activate cte-hr-env
 
