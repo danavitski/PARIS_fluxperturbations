@@ -21,7 +21,7 @@ submit_fluxes_*.log
 /Experiments/ens_members_comparison/
 *.out
 *.err
-STILT_Model/*
+transport_models/
 STILT_log_PDM_particlefilter
 missing.footprints.example
 STILT_scripts/batch_scripts/backup/stilt_batchrun_template.sh
@@ -47,3 +47,6 @@ STILT_scripts/fp_flux_mult/extract_stationinfo_from_ObsPack.py
 STILT_scripts/fp_flux_mult/for_Ruben.ipynb
 STILT_scripts/fp_flux_mult/fp_flux_mult_MP_submit_srun.sh
 STILT_scripts/fp_flux_mult/fp_name_test.ipynb
+templates/landmask/plots/
+Experiments/plots/
+temp/
