@@ -71,7 +71,7 @@ do
   # Create neccessary STILT directories using the setup_auto.sh script. This is
   # done for each job, because each job needs its own directory. The script is 
   # adapted from the original setup.sh script provided in the STILT package.
-  bash /projects/0/ctdas/PARIS/transport_models/STILT_Model/setup_auto.sh $rundir $path $bdyfiles_dir $subdir > "${subdir}STILT_log" &
+  bash /projects/0/ctdas/PARIS/transport_models/STILT_Model/setup_multi.sh $rundir $path $bdyfiles_dir $subdir > "${subdir}STILT_log" &
 
   # Run the STILT model for the current station and with the other user-specified arguments
   Rscript stilt_loop_dense_and_sparse.r --sparse --filter-times --overwrite-localization --station $station --stationfile $FILENAME --nhrs 240 --npars 250 --path $path --rundir $rundir --sourcepath $sourcepath >> "${subdir}STILT_log" &  # Run your executable, note the "&"

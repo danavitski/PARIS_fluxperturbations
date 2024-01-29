@@ -50,3 +50,5 @@ STILT_scripts/fp_flux_mult/fp_name_test.ipynb
 templates/landmask/plots/
 Experiments/plots/
 temp/
+STILT_CTEHR_scripts/batch_scripts/stilt-multistation_Ruben.sh
+STILT_CTEHR_scripts/fp_flux_mult/fp_flux_mult_MP_submit_Ruben.sh

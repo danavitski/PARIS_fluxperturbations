@@ -52,7 +52,7 @@ else
 fi
 
 # Run setup_auto.sh script
-bash /projects/0/ctdas/PARIS/transport_models/STILT_Model/setup_auto.sh $rundir $path $bdyfiles_dir $subdir > "${subdir}STILT_log"
+bash /projects/0/ctdas/PARIS/transport_models/STILT_Model/setup_multi.sh $rundir $path $bdyfiles_dir $subdir > "${subdir}STILT_log" 
 
 # Single-cycle multi-station run:
 Rscript stilt_loop_dense_and_sparse.r --sparse --filter-times --overwrite-localization --station $station --stationfile $FILENAME --nhrs 240 --npars 250 --path $path --rundir $rundir --sourcepath $sourcepath >> "${subdir}STILT_log" &  # Run your executable, note the "&"

@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --time 02:00:00                      # WALLTIME limit of 5 days (120 hours)
-#SBATCH -n 2                                  # ask for 52 tasks (amount of stations in stationfile_all.csv)
-##SBATCH -N 1                                   # ask for 1 node
-#SBATCH --cpus-per-task=1                       # ask for 1 core per task (52 cores in total)
-#SBATCH --mem-per-cpu=3000M                      # max memory per node
-#SBATCH -p fat                                  # run on the fat partition
+#SBATCH --time 06:00:00                             # WALLTIME limit of 6 hours
+#SBATCH -n 39                                        # ask for 52 tasks (amount of stations in stationfile_all.csv)
+##SBATCH -N 1                                       # ask for 1 node
+#SBATCH --cpus-per-task=1                           # ask for 1 core per task (52 cores in total)
+#SBATCH --mem-per-cpu=3000M                         # max memory per node
+#SBATCH -p fat                                      # run on the fat partition
 ##SBATCH -p genoa  
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=daan.kivits@wur.nl
@@ -29,14 +29,13 @@ perturbation=$1
 sum=$2
 
 # Declare fp, flux, obspack, bg, and STILT directories
-fpdir='/projects/0/ctdas/PARIS/DATA/footprints/wur/PARIS_recompile/'
-#fpdir='/projects/0/ctdas/PARIS/DATA/footprints/wur/multi-batch-test/'
+#fpdir='/projects/0/ctdas/PARIS/DATA/footprints/wur/PARIS_recompile/'
+fpdir='/gpfs/scratch1/shared/dkivits/STILT/footprints'
 bgdir='/projects/0/ctdas/PARIS/DATA/background/STILT/'
 obspack_path='/projects/0/ctdas/PARIS/DATA/obs/obspack_co2_466_GVeu_20230913.zip'
 non_obspack_path='/projects/0/ctdas/PARIS/DATA/obs/non_obspacksites/'
-stiltdir='/projects/0/ctdas/PARIS/STILT_Model/STILT_Exe/'
-#stationsfile='/projects/0/ctdas/PARIS/DATA/stationfile_uob_wur_ganesan_manning.csv'
-stationsfile='/projects/0/ctdas/PARIS/DATA/stationfile_uob_wur_PARIS_ANNUAL_FOCUS.csv'
+stiltdir='/projects/0/ctdas/PARIS/transport_models/STILT_Model/STILT_Exe/'
+stationsfile='/projects/0/ctdas/PARIS/DATA/obs/stations/stationfile_uob_wur_ganesan_manning.csv'
 
 # Define ObsPack subset range
 start_date="2021-01-01"

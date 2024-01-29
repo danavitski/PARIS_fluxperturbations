@@ -21,11 +21,7 @@ def get_files_zip(zip_filepath=str):
     """ A function that creates a list of ObsPack files from a local ZIP archive. 
 
     Input variables:
-    url_friendly_hash_sum: URL-friendly hash sum of the ZIP archive on the ICOS CP
-    This is the ending part of the link to the dataset, the hash sum of e.g. 
-    https://meta.icos-cp.eu/objects/ZZwlNi4a8_AFsscsxp603t5t would therefore be 
-    ZZwlNi4a8_AFsscsxp603t5, which is the link to the obspack_co2_466_GVeu_20230913.zip
-    archive.
+    zip_filepath: path to the ZIP archive
 
     Output variables:
     filelist: list of files in the given ZIP archive

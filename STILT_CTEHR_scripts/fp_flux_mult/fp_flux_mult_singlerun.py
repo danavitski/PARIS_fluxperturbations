@@ -130,7 +130,7 @@ sim_length = args.sim_len
 stationsfile = pd.read_csv(stationsfile, header=0)
 stationslist = stationsfile['code']
 
-# CTE-HR variable list to loop over later
+# Create a variable list to loop over later, depending on the given fluxtype
 if perturbation != None:
     fluxtype='PARIS'
     fluxvarnamelist = ['flux_ff_exchange_prior', 'flux_ocean_exchange_prior', 'flux_fire_exchange_prior',
