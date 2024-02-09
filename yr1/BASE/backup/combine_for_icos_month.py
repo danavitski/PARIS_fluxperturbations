@@ -8,11 +8,13 @@ from glob import glob
 import platform
 import os
 
-os.chdir('/projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/')
-
 cdo = Cdo()
-OUTPATH = '../ICOS_OUTPUT/'
-INPATH = '../output/'
+OUTPATH = '/projects/0/ctdas/PARIS/CTE-HR/ICOS_OUTPUT'
+INPATH = '/projects/0/ctdas/PARIS/CTE-HR/output'
+
+# If the target directory does not yet exist, create it
+if not os.path.exists(OUTPATH):
+    os.mkdir(OUTPATH)
 
 DOI = ' https://doi.org/10.5281/zenodo.6477331'
 
@@ -56,7 +58,7 @@ attrs = {
 'institution': 'Wageningen University, department of Meteorology and Air Quality, Wageningen, the Netherlands; \n \
 Rijksuniversiteit Groningen, Groningen, the Netherlands; \n \
 ICOS Carbon Portal, Lund, Sweden',
-'contact': 'Auke van der Woude; auke.vanderwoude@wur.nl',
+'contact': 'Daan Kivits; daan.kivits@wur.nl',
 #'URL': 'carbontracker.eu/cte-hr#NOTYETVALID',
 'Conventions': 'CF-1.8',
 'creation_date': f'{now:%Y-%m-%d %H:%M}',

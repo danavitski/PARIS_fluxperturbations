@@ -15,8 +15,6 @@ module load NCO/5.1.0-foss-2022a
 
 source activate cte-hr-env
 
-#python $1 > submit_fluxes.log
-#python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/BASE/combine_for_paris.py 2021 > submit_fluxes.log
 python /projects/0/ctdas/PARIS/Experiments/scripts/yr1/DFIN/paris_DFIN.py > /projects/0/ctdas/PARIS/Experiments/scripts/yr1/DFIN/submit_fluxes_DFIN.log
 
 echo "Job finished"
