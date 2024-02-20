@@ -1,7 +1,7 @@
-# README file for creating the perturbed flux fields for the PARIS WP6 CO~2~ verification games 
+# README file for creating the perturbed flux fields for the PARIS WP6 CO<sub>2</sub> verification games 
 ### Id: README.md, 16-02-2024 D. Kivits $
 ---
-This directory contains all the Python scripts I used to create the perturbed flux fields for the PARIS WP6 CO~2~ verification games. This is done by transforming the multi-sector CTE-HR fluxes from the output folder of CTE-HR to one <paris_input.nc> file that acts as the 'BASE' set of fluxes, and then perturbing this base flux set according to the flux experiments described in the PARIS WP6 verification games protocol. In short, the flux perturbation scenarios are the following:
+This directory contains all the Python scripts I used to create the perturbed flux fields for the PARIS WP6 CO<sub>2</sub verification games. This is done by transforming the multi-sector CTE-HR fluxes from the output folder of CTE-HR to one <paris_input.nc> file that acts as the 'BASE' set of fluxes, and then perturbing this base flux set according to the flux experiments described in the PARIS WP6 verification games protocol. In short, the flux perturbation scenarios are the following:
     - BASE: the unperturbed fluxes from the CTE-HR model output
     - ATEN: the anthropogenic fluxes over the entire CTE-HR domain are enhanced by 10% (thus 110% of the original BASE fluxes). This doesn't include the cement-related CTE-HR fluxes, but purely the fossil fuel emissions.
     - PTEN: the emissions of the top 10% emitters of the public power sector within the CTE-HR domain are removed from the BASE fluxes. This experiment only impacts the 'A_Public_power' subsector of the anthropogenic CTE-HR fluxes.
@@ -12,7 +12,7 @@ This directory contains all the Python scripts I used to create the perturbed fl
 
 This document consists of the following sections:
 - Instructions to run CTE-HR under 'RUNNING CTE-HR', to later compile the fluxes into the <paris_input.nc> file under 'CREATING BASE SET OF PARIS FLUXES'.
-- Instructions to create the base set of fluxes to be used in the PARIS WP6 CO~2~ verification games under 'CREATING BASE SET OF PARIS FLUXES'. 
+- Instructions to create the base set of fluxes to be used in the PARIS WP6 CO<sub>2</sub verification games under 'CREATING BASE SET OF PARIS FLUXES'. 
 - Instructions on perturbing this base set of fluxes to create the different flux perturbation scenarios under 'PERTURBING THE BASE SET OF PARIS FLUXES'.
 ---
 
